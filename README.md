@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # NEN Dashboard
 
 A modern dashboard application built with Next.js, NextAuth, and Material-UI.
@@ -49,3 +50,7 @@ npm run dev
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+=======
+# nen-dashboard
+Genos client portal
+>>>>>>> 16ac4820112947d96c4453b2dc0583a4961c6429
