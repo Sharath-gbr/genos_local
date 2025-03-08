@@ -92,3 +92,30 @@ nen-dashboard/
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details
+
+## Deployment Checklist
+
+⚠️ **Important**: When deploying to production, make sure to:
+
+1. **Google OAuth**
+   - [ ] Create new OAuth 2.0 credentials for production
+   - [ ] Update authorized origins to production URL
+   - [ ] Update redirect URIs to production callback URL
+   - [ ] Update environment variables with new credentials
+
+2. **NextAuth**
+   - [ ] Generate new NEXTAUTH_SECRET
+   - [ ] Update NEXTAUTH_URL to production URL
+   - [ ] Update NEXT_PUBLIC_BASE_URL
+
+3. **Airtable**
+   - [ ] Generate new production access token
+   - [ ] Update AIRTABLE_ACCESS_TOKEN
+   - [ ] Verify base and table configurations
+
+4. **Email**
+   - [ ] Generate new Gmail App Password for production
+   - [ ] Update EMAIL_APP_PASSWORD
+   - [ ] Verify email configurations
+
+❗ Never reuse development/local tokens in production environment
