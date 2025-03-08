@@ -1,101 +1,226 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Alert,
+  Paper,
+  Tabs,
+  Tab,
+  Divider,
+} from '@mui/material';
+import { styled } from '@mui/material/styles';
+import GoogleIcon from '@mui/icons-material/Google';
+import Link from 'next/link';
+
+const StyledContainer = styled(Container)(({ theme }) => ({
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: theme.spacing(3),
+  background: 'linear-gradient(135deg, #111111 0%, #1A1A1A 100%)',
+  position: 'relative',
+  overflow: 'hidden',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'radial-gradient(circle at 50% 50%, rgba(255, 95, 31, 0.1) 0%, rgba(0, 0, 0, 0) 50%)',
+    pointerEvents: 'none',
+  },
+}));
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4),
+  width: '100%',
+  maxWidth: 400,
+  backdropFilter: 'blur(10px)',
+  backgroundColor: 'rgba(26, 26, 26, 0.8)',
+  border: '1px solid rgba(255, 95, 31, 0.2)',
+  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.5)',
+  transition: 'transform 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    border: '1px solid rgba(255, 95, 31, 0.4)',
+    boxShadow: '0 4px 30px rgba(255, 95, 31, 0.2)',
+  },
+}));
+
+const GlowingText = styled(Typography)(({ theme }) => ({
+  background: 'linear-gradient(45deg, #FFFFFF 30%, #FF5F1F 90%)',
+  backgroundClip: 'text',
+  WebkitBackgroundClip: 'text',
+  color: 'transparent',
+  textShadow: '0 0 30px rgba(255, 95, 31, 0.3)',
+}));
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [tab, setTab] = useState(0);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState({ type: '', content: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage({ type: '', content: '' });
+    setIsLoading(true);
+
+    try {
+      if (tab === 0) {
+        // Register
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
+        }
+
+        setMessage({
+          type: 'success',
+          content: 'Registration successful! You can now log in.',
+        });
+        setTab(1); // Switch to login tab
+      } else {
+        // Login
+        const result = await signIn('credentials', {
+          redirect: false,
+          email,
+          password,
+        });
+
+        if (result?.error) {
+          throw new Error(result.error);
+        }
+
+        setMessage({
+          type: 'success',
+          content: 'Login successful! Redirecting...',
+        });
+
+        // Redirect to dashboard
+        window.location.href = '/dashboard';
+      }
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        content: error.message || 'An error occurred',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    signIn('google', { callbackUrl: '/dashboard' });
+  };
+
+  return (
+    <StyledContainer>
+      <GlowingText variant="h2" component="h1" gutterBottom>
+        Genos
+      </GlowingText>
+      <GlowingText variant="h4" gutterBottom sx={{ opacity: 0.8 }}>
+        Welcome to nen
+      </GlowingText>
+
+      <StyledPaper elevation={3}>
+        <Tabs
+          value={tab}
+          onChange={(_, newValue) => setTab(newValue)}
+          variant="fullWidth"
+          sx={{ mb: 3 }}
+        >
+          <Tab label="Sign Up" />
+          <Tab label="Log In" />
+        </Tabs>
+
+        {message.content && (
+          <Alert severity={message.type as 'error' | 'success'} sx={{ mb: 2 }}>
+            {message.content}
+          </Alert>
+        )}
+
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<GoogleIcon />}
+          onClick={handleGoogleSignIn}
+          sx={{
+            mb: 2,
+            backgroundColor: 'rgba(255, 95, 31, 0.05)',
+            borderColor: 'rgba(255, 95, 31, 0.2)',
+            color: '#FFFFFF',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 95, 31, 0.1)',
+              borderColor: 'rgba(255, 95, 31, 0.4)',
+              boxShadow: '0 4px 20px rgba(255, 95, 31, 0.2)',
+            },
+          }}
+        >
+          {tab === 0 ? 'Sign up with Google' : 'Sign in with Google'}
+        </Button>
+
+        <Divider sx={{ my: 2 }}>OR</Divider>
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            margin="normal"
+          />
+          <TextField
+            fullWidth
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            margin="normal"
+            helperText={tab === 0 ? "Must contain 8+ characters, uppercase, number & special character" : ""}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+            disabled={isLoading}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            {isLoading ? 'Please wait...' : (tab === 0 ? 'Sign Up' : 'Log In')}
+          </Button>
+
+          {tab === 1 && (
+            <Link href="/forgot-password" passHref>
+              <Typography
+                variant="body2"
+                color="primary"
+                sx={{ textAlign: 'center', mt: 1, cursor: 'pointer' }}
+              >
+                Forgot your password?
+              </Typography>
+            </Link>
+          )}
+        </Box>
+      </StyledPaper>
+    </StyledContainer>
   );
 }
