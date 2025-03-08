@@ -150,7 +150,13 @@ export default function Dashboard() {
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
-            <StyledCard>
+            <StyledCard 
+              onClick={() => router.push('/dashboard/profile')}
+              sx={{ cursor: 'pointer' }}
+            >
+              <IconWrapper>
+                <UserCircleIcon style={{ width: 24, height: 24, color: '#FF5F1F' }} />
+              </IconWrapper>
               <CardTitle>
                 Profile
               </CardTitle>

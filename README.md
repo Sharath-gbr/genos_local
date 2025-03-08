@@ -95,27 +95,44 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Deployment Checklist
 
-⚠️ **Important**: When deploying to production, make sure to:
+⚠️ **Important**: Do not reuse development tokens in production!
 
-1. **Google OAuth**
-   - [ ] Create new OAuth 2.0 credentials for production
-   - [ ] Update authorized origins to production URL
-   - [ ] Update redirect URIs to production callback URL
-   - [ ] Update environment variables with new credentials
+Before deploying to production, ensure you:
 
-2. **NextAuth**
-   - [ ] Generate new NEXTAUTH_SECRET
-   - [ ] Update NEXTAUTH_URL to production URL
-   - [ ] Update NEXT_PUBLIC_BASE_URL
+1. **Google OAuth Configuration**
+   - Create new OAuth 2.0 Client credentials for production
+   - Update authorized origins and redirect URIs
+   - Update `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 
-3. **Airtable**
-   - [ ] Generate new production access token
-   - [ ] Update AIRTABLE_ACCESS_TOKEN
-   - [ ] Verify base and table configurations
+2. **NextAuth Configuration**
+   - Generate new `NEXTAUTH_SECRET` using `openssl rand -base64 32`
+   - Update `NEXTAUTH_URL` to production URL
 
-4. **Email**
-   - [ ] Generate new Gmail App Password for production
-   - [ ] Update EMAIL_APP_PASSWORD
-   - [ ] Verify email configurations
+3. **Airtable Configuration**
+   - Generate new access token for production
+   - Verify base ID and table names
+   - Update `AIRTABLE_ACCESS_TOKEN` and `AIRTABLE_BASE_ID`
 
-❗ Never reuse development/local tokens in production environment
+4. **Email Configuration**
+   - Create new Gmail App Password for production
+   - Update email configuration settings
+
+5. **Profile Picture Storage**
+   - Set up cloud storage service (e.g., AWS S3, Google Cloud Storage)
+   - Configure storage bucket and access permissions
+   - Add storage service credentials to environment variables:
+     ```
+     STORAGE_BUCKET_NAME=your-bucket-name
+     STORAGE_ACCESS_KEY=your-access-key
+     STORAGE_SECRET_KEY=your-secret-key
+     STORAGE_REGION=your-region
+     ```
+   - Update profile picture upload functionality to use cloud storage
+   - Implement proper file size limits and type validation
+   - Set up CDN (optional) for better performance
+
+Remember to:
+- Test all functionality with new production credentials
+- Verify security headers and CORS settings
+- Enable proper logging and monitoring
+- Set up backup procedures for user data
