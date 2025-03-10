@@ -106,19 +106,50 @@ const ScrollablePaper = styled(StyledPaper)`
 `;
 
 const StyledAccordion = styled(Accordion)(({ theme }) => ({
-  background: 'transparent',
+  background: 'rgba(18, 18, 18, 0.8)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 95, 31, 0.2)',
+  borderRadius: '16px !important',
   color: theme.palette.common.white,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    border: '1px solid rgba(255, 95, 31, 0.5)',
+    boxShadow: '0 4px 20px rgba(255, 95, 31, 0.1)',
+  },
   '&:before': {
     display: 'none',
   },
   '& .MuiAccordionSummary-root': {
     borderBottom: '1px solid rgba(255, 95, 31, 0.2)',
+    minHeight: '48px',
+    '&.Mui-expanded': {
+      minHeight: '48px',
+    }
   },
   '& .MuiAccordionSummary-content': {
-    margin: '8px 0',
+    margin: '12px 0',
+    '&.Mui-expanded': {
+      margin: '12px 0',
+    }
   },
   '& .MuiAccordionDetails-root': {
-    padding: theme.spacing(2, 1),
+    padding: theme.spacing(2),
+    maxHeight: '600px',
+    overflow: 'auto',
+    '&::-webkit-scrollbar': {
+      width: '8px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'rgba(255, 255, 255, 0.05)',
+      borderRadius: '4px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: 'rgba(255, 95, 31, 0.3)',
+      borderRadius: '4px',
+      '&:hover': {
+        background: 'rgba(255, 95, 31, 0.5)',
+      }
+    }
   },
 }));
 
@@ -138,33 +169,31 @@ const GroupTitle = styled(Typography)`
 function ConditionSection({ title, conditions }: { title: string, conditions: MedicalCondition[] }) {
   return (
     <Grid item xs={12} md={4}>
-      <ScrollablePaper elevation={0}>
-        <StyledAccordion defaultExpanded>
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon sx={{ color: 'primary.main' }} />}
-          >
-            <SectionTitle>
-              {title} ({conditions.length})
-            </SectionTitle>
-          </AccordionSummary>
-          <AccordionDetails>
-            <List disablePadding>
-              {conditions.map((item, idx) => (
-                <Box key={idx} sx={{ mb: 2 }}>
-                  <ConditionName>
-                    {item.condition}
-                  </ConditionName>
-                  {item.status !== item.condition && (
-                    <ConditionStatus>
-                      {item.status}
-                    </ConditionStatus>
-                  )}
-                </Box>
-              ))}
-            </List>
-          </AccordionDetails>
-        </StyledAccordion>
-      </ScrollablePaper>
+      <StyledAccordion defaultExpanded>
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon sx={{ color: 'primary.main' }} />}
+        >
+          <SectionTitle>
+            {title} ({conditions.length})
+          </SectionTitle>
+        </AccordionSummary>
+        <AccordionDetails>
+          <List disablePadding>
+            {conditions.map((item, idx) => (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <ConditionName>
+                  {item.condition}
+                </ConditionName>
+                {item.status !== item.condition && (
+                  <ConditionStatus>
+                    {item.status}
+                  </ConditionStatus>
+                )}
+              </Box>
+            ))}
+          </List>
+        </AccordionDetails>
+      </StyledAccordion>
     </Grid>
   );
 }
@@ -235,24 +264,20 @@ export default function MedicalConditionsGrid() {
 
   if (loading) {
     return (
-      <Box sx={{ 
-        p: 3, 
-        textAlign: 'center',
-        color: 'primary.main'
-      }}>
-        <Typography>Loading medical conditions...</Typography>
+      <Box sx={{ p: 3 }}>
+        <Typography sx={{ textAlign: 'center', color: 'primary.main' }}>
+          Loading medical conditions...
+        </Typography>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ 
-        p: 3, 
-        textAlign: 'center', 
-        color: 'error.main'
-      }}>
-        <Typography>{error}</Typography>
+      <Box sx={{ p: 3 }}>
+        <Typography sx={{ textAlign: 'center', color: 'error.main' }}>
+          {error}
+        </Typography>
       </Box>
     );
   }

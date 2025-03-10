@@ -110,7 +110,7 @@ const StyledNavItem = styled(Link, {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: UserCircleIcon },
-  { name: 'Assessments', href: '/dashboard/assessments', icon: ClipboardDocumentListIcon },
+  { name: 'Intake Assessments', href: '/dashboard/intake-assessments', icon: ClipboardDocumentListIcon },
   { name: 'Daily Logs', href: '/dashboard/daily-logs', icon: CalendarIcon },
   { name: 'Progress', href: '/dashboard/progress', icon: ChartBarIcon },
 ]

@@ -41,14 +41,13 @@ export async function GET(request: Request) {
 
     const record = records[0];
     const fields = record.fields;
+    
+    // Log all available fields and their values
+    console.log('4. All available fields and values:', JSON.stringify(fields, null, 2));
 
-    // Return the pre-categorized fields
+    // Return all fields in response for debugging
     return NextResponse.json({
-      fields: {
-        'Conditions from Intake Form': fields['Conditions from Intake Form'],
-        'Medical History': fields['Medical History'],
-        'Diagnosed Conditions': fields['Diagnosed Conditions']
-      }
+      fields: fields
     });
 
   } catch (error) {

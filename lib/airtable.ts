@@ -1,4 +1,4 @@
-const Airtable = require('airtable');
+import Airtable from 'airtable';
 
 // Define types for Airtable records
 interface AirtableRecord {
@@ -23,6 +23,12 @@ console.log('Airtable Config:', {
   tableName: airtableConfig.tableName,
   hasApiKey: !!airtableConfig.apiKey
 });
+
+const airtableBase = new Airtable({
+  apiKey: process.env.AIRTABLE_ACCESS_TOKEN
+}).base(process.env.AIRTABLE_BASE_ID!);
+
+export { airtableBase as base };
 
 const base = new Airtable({
   apiKey: airtableConfig.apiKey
