@@ -19,16 +19,15 @@ const BloodReportAssessment = dynamic(
 );
 
 const KnownAllergies = dynamic(
-  () => {
-    console.log('Attempting to load KnownAllergies');
-    return import('@/app/components/widgets/KnownAllergies');
-  },
+  () => import('@/app/components/widgets/KnownAllergies'),
+  { ssr: false }
+);
+
+const GutSymptomsWidget = dynamic(
+  () => import('@/app/components/widgets/GutSymptomsWidget'),
   { 
-    loading: () => {
-      console.log('KnownAllergies is loading');
-      return <div>Loading Known Allergies...</div>;
-    },
-    ssr: false 
+    ssr: false,
+    loading: () => <Box className="p-6">Loading Gut Symptoms...</Box>
   }
 );
 
@@ -56,6 +55,7 @@ export default function IntakeAssessmentsContent() {
       <MedicalConditionsGrid />
       <BloodReportAssessment email={session.user?.email || ''} />
       <KnownAllergies />
+      <GutSymptomsWidget />
     </Box>
   );
 } 
