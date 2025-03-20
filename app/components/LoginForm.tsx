@@ -44,46 +44,151 @@ export default function LoginForm() {
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+    <Box 
+      component="form" 
+      onSubmit={handleSubmit} 
+      sx={{ 
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3
+      }}
+    >
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error">
           {error}
         </Alert>
       )}
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="email"
-        label="Email Address"
-        name="email"
-        autoComplete="email"
-        autoFocus
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        disabled={isLoading}
-      />
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        name="password"
-        label="Password"
-        type="password"
-        id="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        disabled={isLoading}
-      />
+      
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ position: 'relative', pt: 3 }}>
+          <Typography 
+            component="label" 
+            htmlFor="email" 
+            sx={{ 
+              color: '#FF5F1F',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              fontSize: '1rem',
+              fontWeight: 400,
+            }}
+          >
+            Email<Typography component="span" sx={{ ml: 0.5 }}>*</Typography>
+          </Typography>
+          <TextField
+            id="email"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            fullWidth
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+            variant="outlined"
+            placeholder="Enter your email"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#F8F9FA',
+                borderRadius: '16px',
+                height: '56px',
+                '& fieldset': {
+                  borderColor: 'transparent',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'transparent',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#FF5F1F',
+                },
+              },
+              '& .MuiOutlinedInput-input': {
+                padding: '16px 20px',
+                fontSize: '1rem',
+              },
+            }}
+          />
+        </Box>
+
+        <Box sx={{ position: 'relative', pt: 3 }}>
+          <Typography 
+            component="label" 
+            htmlFor="password" 
+            sx={{ 
+              color: '#FF5F1F',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              fontSize: '1rem',
+              fontWeight: 400,
+            }}
+          >
+            Password<Typography component="span" sx={{ ml: 0.5 }}>*</Typography>
+          </Typography>
+          <TextField
+            name="password"
+            type="password"
+            id="password"
+            autoComplete="current-password"
+            fullWidth
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+            variant="outlined"
+            placeholder="Enter your password"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#F8F9FA',
+                borderRadius: '16px',
+                height: '56px',
+                '& fieldset': {
+                  borderColor: 'transparent',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'transparent',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#FF5F1F',
+                },
+              },
+              '& .MuiOutlinedInput-input': {
+                padding: '16px 20px',
+                fontSize: '1rem',
+              },
+            }}
+          />
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              display: 'block',
+              mt: 1,
+              color: '#FF5F1F',
+              fontSize: '0.875rem'
+            }}
+          >
+            Must contain 8+ characters, uppercase, number & special character
+          </Typography>
+        </Box>
+      </Box>
+
       <Button
         type="submit"
         fullWidth
         variant="contained"
-        sx={{ mt: 3, mb: 2 }}
         disabled={isLoading}
+        sx={{ 
+          mt: 2,
+          bgcolor: '#FF5F1F',
+          borderRadius: '8px',
+          height: '48px',
+          textTransform: 'none',
+          fontSize: '1rem',
+          '&:hover': {
+            bgcolor: '#e54e0e'
+          }
+        }}
       >
-        {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
+        {isLoading ? <CircularProgress size={24} /> : 'Log In'}
       </Button>
 
       <Divider sx={{ my: 2 }}>OR</Divider>
@@ -93,7 +198,18 @@ export default function LoginForm() {
         variant="outlined"
         startIcon={<GoogleIcon />}
         onClick={handleGoogleSignIn}
-        sx={{ mb: 2 }}
+        sx={{ 
+          borderColor: '#FF5F1F',
+          color: '#FF5F1F',
+          borderRadius: '8px',
+          height: '48px',
+          textTransform: 'none',
+          fontSize: '1rem',
+          '&:hover': {
+            borderColor: '#e54e0e',
+            bgcolor: 'rgba(255, 95, 31, 0.04)'
+          }
+        }}
       >
         Sign in with Google
       </Button>
@@ -101,8 +217,15 @@ export default function LoginForm() {
       <Link href="/forgot-password" passHref>
         <Typography
           variant="body2"
-          color="primary"
-          sx={{ textAlign: 'center', mt: 1, cursor: 'pointer' }}
+          sx={{ 
+            textAlign: 'center',
+            color: '#FF5F1F',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            '&:hover': {
+              textDecoration: 'underline'
+            }
+          }}
         >
           Forgot your password?
         </Typography>

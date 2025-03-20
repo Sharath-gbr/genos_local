@@ -1,70 +1,76 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import fs from 'fs';
-import path from 'path';
+import { supabase } from '@/lib/db';
 
-const USERS_FILE = path.join(process.cwd(), 'users.json');
+// Define schema for request validation
+const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(6),
+});
 
-// Helper functions
-const getUsers = () => JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-const saveUsers = (users: any[]) => fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
 
-export async function POST(request: Request) {
+interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<ResetPasswordResponse>> {
   try {
-    const { token, password } = await request.json();
+    const body = await request.json();
+    const validatedData = resetPasswordSchema.parse(body);
+    
+    // Verify token and get user
+    const { data: resetToken, error: tokenError } = await supabase
+      .from('password_reset_tokens')
+      .select('*')
+      .eq('token', validatedData.token)
+      .single();
 
-    if (!token || !password) {
+    if (tokenError || !resetToken || resetToken.expires_at < new Date().toISOString()) {
       return NextResponse.json(
-        { error: 'Token and password are required' },
-        { status: 400 }
-      );
-    }
-
-    const users = getUsers();
-    const user = users.find((u: any) => u.resetToken === token);
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired reset token' },
-        { status: 400 }
-      );
-    }
-
-    if (!user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
-      return NextResponse.json(
-        { error: 'Reset token has expired' },
-        { status: 400 }
-      );
-    }
-
-    // Password validation
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: 'Password must be at least 8 characters long' },
+        { success: false, message: 'Invalid or expired reset token' },
         { status: 400 }
       );
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
 
-    // Update user password and clear reset token
-    user.password = hashedPassword;
-    user.resetToken = null;
-    user.resetTokenExpiry = null;
-    user.loginAttempts = 0;
-    user.lockUntil = null;
+    // Update user password
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password: hashedPassword })
+      .eq('id', resetToken.user_id);
 
-    saveUsers(users);
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to update password' },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(
-      { message: 'Password has been reset successfully' },
-      { status: 200 }
-    );
+    // Delete used token
+    await supabase
+      .from('password_reset_tokens')
+      .delete()
+      .eq('token', validatedData.token);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Password has been reset successfully'
+    });
   } catch (error) {
-    console.error('Reset password error:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid input data' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to reset password' },
+      { success: false, message: 'Failed to reset password' },
       { status: 500 }
     );
   }

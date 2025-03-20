@@ -12,11 +12,6 @@ const StyledAccordion = styled(Accordion)(({ theme }) => ({
   border: '1px solid rgba(255, 95, 31, 0.2)',
   borderRadius: '16px !important',
   color: '#FFFFFF',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    border: '1px solid rgba(255, 95, 31, 0.5)',
-    boxShadow: '0 4px 20px rgba(255, 95, 31, 0.1)',
-  },
   '&:before': {
     display: 'none',
   }
@@ -26,14 +21,11 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
   color: theme.palette.primary.main,
   fontWeight: 600,
   fontSize: '1.25rem',
-  display: 'flex',
-  alignItems: 'center',
-  gap: theme.spacing(1),
 }));
 
 const GridContainer = styled(Box)(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
   gap: theme.spacing(2),
   padding: theme.spacing(2),
 }));
@@ -42,33 +34,42 @@ const ContentBox = styled(Box)(({ theme }) => ({
   padding: theme.spacing(2),
   backgroundColor: 'rgba(45, 45, 45, 0.8)',
   borderRadius: theme.shape.borderRadius,
-  minHeight: '80px',
   border: '1px solid rgba(255, 95, 31, 0.2)',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    border: '1px solid rgba(255, 95, 31, 0.5)',
-    boxShadow: '0 4px 20px rgba(255, 95, 31, 0.1)',
-  }
 }));
 
-async function fetchGutSymptoms(email: string) {
-  console.log('Fetching gut symptoms for email:', email);
+interface EnergyLevelsData {
+  energyStatus: {
+    levels: string;
+    fatigue: string;
+  };
+  medicalConditions: {
+    hypothyroidism: string;
+    anemia: string;
+  };
+  physicalSymptoms: {
+    exhaustion: string;
+    breathlessness: string;
+  };
+}
+
+async function fetchEnergyLevels(email: string) {
+  console.log('Fetching energy levels for email:', email);
   const response = await fetch(`/api/medical-conditions?email=${encodeURIComponent(email)}`);
   if (!response.ok) {
-    throw new Error('Failed to fetch gut symptoms data');
+    throw new Error('Failed to fetch energy levels data');
   }
   const data = await response.json();
   console.log('API Response:', data);
   return data;
 }
 
-export default function GutSymptomsWidget() {
+export default function EnergyLevelsWidget() {
   const { data: session } = useSession();
   const email = session?.user?.email;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['gutSymptoms', email],
-    queryFn: () => fetchGutSymptoms(email || ''),
+    queryKey: ['energyLevels', email],
+    queryFn: () => fetchEnergyLevels(email || ''),
     enabled: !!email,
   });
 
@@ -77,73 +78,99 @@ export default function GutSymptomsWidget() {
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-        <Typography>Loading gut symptoms data...</Typography>
+        <Typography>Loading energy levels data...</Typography>
       </Box>
     );
   }
 
   if (error) {
-    console.error('Error fetching gut symptoms:', error);
+    console.error('Error fetching energy levels:', error);
     return (
       <Box sx={{ p: 2, color: 'error.main' }}>
-        Error loading gut symptoms data
+        Error loading energy levels data
       </Box>
     );
   }
 
-  const gutData = {
-    bowelMovement: data?.fields?.['How is your bowel movement?'] || '-',
-    bloating: data?.fields?.['Do you experience bloating?'] || '-',
-    burping: data?.fields?.['Do you burp frequently?'] || '-',
-    flatulence: data?.fields?.['Do you frequently experience increased flatulence?'] || '-'
+  const energyData: EnergyLevelsData = {
+    energyStatus: {
+      levels: data?.fields?.['How are your energy levels?'] || '-',
+      fatigue: data?.fields?.['Do you feel fatigued all the time?'] || 'No',
+    },
+    medicalConditions: {
+      hypothyroidism: data?.fields?.['Have you been diagnosed with Hypothyroidism?'] || 'No',
+      anemia: data?.fields?.['Have you been diagnosed with Anemia?'] || 'No',
+    },
+    physicalSymptoms: {
+      exhaustion: data?.fields?.['Do you get exhausted from doing physical work?'] || 'No',
+      breathlessness: data?.fields?.['Do you feel breathless on climbing stairs?'] || 'No',
+    },
   };
 
-  console.log('Processed gut data:', gutData);
+  console.log('Processed energy data:', energyData);
 
   return (
     <StyledAccordion>
       <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: theme => theme.palette.primary.main }} />}
-        aria-controls="gut-symptoms-content"
-        id="gut-symptoms-header"
+        aria-controls="energy-levels-content"
+        id="energy-levels-header"
       >
-        <SectionTitle>Gut Symptoms</SectionTitle>
+        <SectionTitle>Energy Levels History</SectionTitle>
       </AccordionSummary>
       <AccordionDetails>
         <GridContainer>
           <ContentBox>
             <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
-              Bowel Movement
+              General Energy
             </Typography>
             <Typography sx={{ mb: 1 }}>
               <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-                Bowel Movement:
+                Energy Levels:
               </Box>
-              <Box component="span" sx={{ color: '#FFFFFF' }}> {gutData.bowelMovement}</Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {energyData.energyStatus.levels}</Box>
+            </Typography>
+            <Typography sx={{ mb: 1 }}>
+              <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                Fatigued all the time:
+              </Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {energyData.energyStatus.fatigue}</Box>
             </Typography>
           </ContentBox>
 
           <ContentBox>
             <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
-              Digestive Issues
+              Medical Conditions
             </Typography>
             <Typography sx={{ mb: 1 }}>
               <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-                Bloating:
+                Hypothyroidism:
               </Box>
-              <Box component="span" sx={{ color: '#FFFFFF' }}> {gutData.bloating}</Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {energyData.medicalConditions.hypothyroidism}</Box>
             </Typography>
             <Typography sx={{ mb: 1 }}>
               <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-                Burping:
+                Anemia:
               </Box>
-              <Box component="span" sx={{ color: '#FFFFFF' }}> {gutData.burping}</Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {energyData.medicalConditions.anemia}</Box>
+            </Typography>
+          </ContentBox>
+
+          <ContentBox>
+            <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
+              Physical Symptoms
             </Typography>
             <Typography sx={{ mb: 1 }}>
               <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-                Flatulence:
+                Exhausted from physical work:
               </Box>
-              <Box component="span" sx={{ color: '#FFFFFF' }}> {gutData.flatulence}</Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {energyData.physicalSymptoms.exhaustion}</Box>
+            </Typography>
+            <Typography sx={{ mb: 1 }}>
+              <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                Breathless on climbing stairs:
+              </Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {energyData.physicalSymptoms.breathlessness}</Box>
             </Typography>
           </ContentBox>
         </GridContainer>

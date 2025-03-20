@@ -26,6 +26,10 @@ jobs:
       env:
         NEXTAUTH_URL: http://localhost:3000
         NEXTAUTH_SECRET: dummy-secret-for-ci
+        AIRTABLE_ACCESS_TOKEN: dummy-token-for-ci
+        AIRTABLE_BASE_ID: dummy-base-for-ci
+        GOOGLE_CLIENT_ID: dummy-client-id-for-ci
+        GOOGLE_CLIENT_SECRET: dummy-secret-for-ci
         
     - name: Run type check
       run: npm run typecheck || true 

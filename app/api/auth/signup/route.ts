@@ -1,76 +1,93 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { initializeDb } from '@/lib/db';
-import nodemailer from 'nodemailer';
-import crypto from 'crypto';
+import { supabase } from '@/lib/db';
+import { sendVerificationEmail } from '@/lib/email';
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+// Define schema for request validation
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(2),
 });
 
-export async function POST(request: Request) {
+type SignupRequest = z.infer<typeof signupSchema>;
+
+interface SignupResponse {
+  success: boolean;
+  message: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<SignupResponse>> {
   try {
-    const { email, password } = await request.json();
-
-    // Validate input
-    if (!email || !password) {
-      return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
-
-    const db = await initializeDb();
-
+    const body = await request.json();
+    const validatedData = signupSchema.parse(body);
+    
     // Check if user already exists
-    const existingUser = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', validatedData.email)
+      .single();
+
     if (existingUser) {
       return NextResponse.json(
-        { message: 'User already exists' },
+        { success: false, message: 'User already exists' },
         { status: 400 }
       );
     }
 
     // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    // Create user
+    const { data: newUser, error: createError } = await supabase
+      .from('users')
+      .insert([
+        {
+          email: validatedData.email,
+          password: hashedPassword,
+          name: validatedData.name,
+          is_verified: false
+        }
+      ])
+      .select()
+      .single();
 
-    // Insert user into database
-    await db.run(
-      'INSERT INTO users (email, password, verification_token) VALUES (?, ?, ?)',
-      [email, hashedPassword, verificationToken]
-    );
+    if (createError) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to create user' },
+        { status: 500 }
+      );
+    }
 
     // Send verification email
-    const verificationUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/verify/${verificationToken}`;
-    
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Verify your email for Genos',
-      html: `
-        <h1>Welcome to Genos!</h1>
-        <p>Please click the link below to verify your email address:</p>
-        <a href="${verificationUrl}">${verificationUrl}</a>
-      `
-    });
+    await sendVerificationEmail(newUser.email, newUser.id);
 
+    return NextResponse.json({
+      success: true,
+      message: 'User created successfully. Please check your email for verification.',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name
+      }
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid input data' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { message: 'User created successfully. Please check your email for verification.' },
-      { status: 201 }
-    );
-  } catch (error: any) {
-    console.error('Signup error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
+      { success: false, message: 'Failed to create user' },
       { status: 500 }
     );
   }

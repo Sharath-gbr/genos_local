@@ -4,6 +4,7 @@
     "email": "sharathsudheer2310@gmail.com",
     "password": "$2b$10$PuEk1/ZsjXizIQyEJmPnIODds4O/sGSY4tpWBHkgeSZkBlVN8mtai",
     "createdAt": "2025-03-08T11:43:36.640Z",
-    "loginAttempts": 1
+    "loginAttempts": 0,
+    "lockUntil": null
   }
 ]

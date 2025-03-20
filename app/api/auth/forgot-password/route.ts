@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
+import { z } from 'zod';
 
 const USERS_FILE = path.join(process.cwd(), 'users.json');
 
@@ -19,9 +20,25 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function POST(request: Request) {
+// Define schema for request validation
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>;
+
+// Define response types
+interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<ForgotPasswordResponse>> {
   try {
-    const { email } = await request.json();
+    const body = await request.json();
+    const validatedData = forgotPasswordSchema.parse(body);
+
+    const { email } = validatedData;
 
     if (!email) {
       return NextResponse.json(
@@ -67,14 +84,18 @@ export async function POST(request: Request) {
 
     await transporter.sendMail(mailOptions);
 
-    return NextResponse.json(
-      { message: 'Password reset email sent' },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, message: 'Password reset email sent' });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+    
     console.error('Forgot password error:', error);
     return NextResponse.json(
-      { error: 'Failed to process password reset request' },
+      { success: false, message: 'Failed to process password reset request' },
       { status: 500 }
     );
   }

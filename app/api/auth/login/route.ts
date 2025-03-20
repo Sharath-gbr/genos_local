@@ -1,30 +1,44 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { initializeDb } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-export async function POST(request: Request) {
+// Define schema for request validation
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+type LoginRequest = z.infer<typeof loginSchema>;
+
+interface LoginResponse {
+  success: boolean;
+  message: string;
+  token?: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<LoginResponse>> {
   try {
-    const { email, password } = await request.json();
-
-    // Validate input
-    if (!email || !password) {
-      return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
-
-    const db = await initializeDb();
-
-    // Find user
-    const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+    const body = await request.json();
+    const validatedData = loginSchema.parse(body);
     
-    if (!user) {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', validatedData.email)
+      .single();
+
+    if (error || !user) {
       return NextResponse.json(
-        { message: 'Invalid credentials' },
+        { success: false, message: 'Invalid credentials' },
         { status: 401 }
       );
     }
@@ -32,17 +46,17 @@ export async function POST(request: Request) {
     // Check if user is verified
     if (!user.is_verified) {
       return NextResponse.json(
-        { message: 'Please verify your email before logging in' },
+        { success: false, message: 'Please verify your email before logging in' },
         { status: 401 }
       );
     }
 
     // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
     
     if (!isValidPassword) {
       return NextResponse.json(
-        { message: 'Invalid credentials' },
+        { success: false, message: 'Invalid credentials' },
         { status: 401 }
       );
     }
@@ -55,13 +69,25 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json({
+      success: true,
       message: 'Login successful',
-      token
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
     });
-  } catch (error: any) {
-    console.error('Login error:', error);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid input data' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { success: false, message: 'Login failed' },
       { status: 500 }
     );
   }

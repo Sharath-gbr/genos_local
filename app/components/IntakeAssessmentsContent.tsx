@@ -31,6 +31,22 @@ const GutSymptomsWidget = dynamic(
   }
 );
 
+const SleepHistoryWidget = dynamic(
+  () => import('@/app/components/widgets/SleepHistoryWidget'),
+  { 
+    ssr: false,
+    loading: () => <Box className="p-6">Loading Sleep History...</Box>
+  }
+);
+
+const EnergyLevelsWidget = dynamic(
+  () => import('@/app/components/widgets/EnergyLevelsWidget'),
+  { 
+    ssr: false,
+    loading: () => <Box className="p-6">Loading Energy Levels History...</Box>
+  }
+);
+
 export default function IntakeAssessmentsContent() {
   console.log('Rendering IntakeAssessmentsContent');
   const { data: session, status } = useSession();
@@ -56,6 +72,8 @@ export default function IntakeAssessmentsContent() {
       <BloodReportAssessment email={session.user?.email || ''} />
       <KnownAllergies />
       <GutSymptomsWidget />
+      <SleepHistoryWidget />
+      <EnergyLevelsWidget />
     </Box>
   );
 } 

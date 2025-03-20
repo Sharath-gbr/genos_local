@@ -11,33 +11,32 @@ interface AirtableError {
   stack?: string;
 }
 
-// Configure Airtable
-const airtableConfig = {
-  apiKey: process.env.AIRTABLE_ACCESS_TOKEN,
-  baseId: process.env.AIRTABLE_BASE_ID,
-  tableName: process.env.AIRTABLE_TABLE_NAME
-};
+// Environment variables validation
+const apiKey = process.env.AIRTABLE_API_KEY || process.env.AIRTABLE_ACCESS_TOKEN;
+const baseId = process.env.AIRTABLE_BASE_ID;
+const tableName = process.env.AIRTABLE_TABLE_NAME;
 
-console.log('Airtable Config:', {
-  baseId: airtableConfig.baseId,
-  tableName: airtableConfig.tableName,
-  hasApiKey: !!airtableConfig.apiKey
+if (!apiKey || !baseId) {
+  throw new Error('Missing required Airtable configuration (API key or Base ID)');
+}
+
+// Configure Airtable
+Airtable.configure({
+  apiKey: apiKey
 });
 
-const airtableBase = new Airtable({
-  apiKey: process.env.AIRTABLE_ACCESS_TOKEN
-}).base(process.env.AIRTABLE_BASE_ID!);
+// Create base instance
+export const airtableBase = new Airtable({ apiKey }).base(baseId);
 
-export { airtableBase as base };
-
-const base = new Airtable({
-  apiKey: airtableConfig.apiKey
-}).base(airtableConfig.baseId!);
-
-export const table = base(airtableConfig.tableName!);
+// Create table instance if table name is provided
+export const table = tableName ? airtableBase(tableName) : null;
 
 // Function to fetch records for a specific patient ID
 export async function getPatientRecords(patientId: string) {
+  if (!table) {
+    throw new Error('Table name not configured');
+  }
+
   try {
     console.log('Fetching records for patient:', patientId);
     const records = await table.select({
@@ -58,19 +57,13 @@ export async function getPatientRecords(patientId: string) {
       };
     });
 
-    console.log('First record data:', mappedRecords[0]); // Debug log to see the data structure
     return mappedRecords;
   } catch (error) {
     const err = error as AirtableError;
     console.error('Error fetching patient records:', {
       message: err.message,
       stack: err.stack,
-      patientId,
-      config: {
-        baseId: airtableConfig.baseId,
-        tableName: airtableConfig.tableName,
-        hasApiKey: !!airtableConfig.apiKey
-      }
+      patientId
     });
     throw error;
   }
@@ -78,6 +71,10 @@ export async function getPatientRecords(patientId: string) {
 
 // Function to fetch all records from a table
 export async function getAllRecords() {
+  if (!table) {
+    throw new Error('Table name not configured');
+  }
+
   try {
     console.log('Fetching records from Airtable...');
     const records = await table.select().all();
@@ -88,14 +85,9 @@ export async function getAllRecords() {
     }));
   } catch (error) {
     const err = error as AirtableError;
-    console.error('Error details:', {
+    console.error('Error fetching records:', {
       message: err.message,
-      stack: err.stack,
-      config: {
-        baseId: airtableConfig.baseId,
-        tableName: airtableConfig.tableName,
-        hasApiKey: !!airtableConfig.apiKey
-      }
+      stack: err.stack
     });
     throw error;
   }
@@ -103,6 +95,10 @@ export async function getAllRecords() {
 
 // Function to fetch a single record by ID
 export async function getRecordById(id: string) {
+  if (!table) {
+    throw new Error('Table name not configured');
+  }
+
   try {
     const record = await table.find(id);
     return {

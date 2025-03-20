@@ -51,6 +51,19 @@ const AllergyCategoryBox = styled(Box)(({ theme }) => ({
   }
 }));
 
+const ContentBox = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(2),
+  backgroundColor: 'rgba(45, 45, 45, 0.8)',
+  borderRadius: theme.shape.borderRadius,
+  minHeight: '80px',
+  border: '1px solid rgba(255, 95, 31, 0.2)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    border: '1px solid rgba(255, 95, 31, 0.5)',
+    boxShadow: '0 4px 20px rgba(255, 95, 31, 0.1)',
+  }
+}));
+
 async function fetchMedicalConditions(email: string) {
   const response = await fetch(`/api/medical-conditions?email=${encodeURIComponent(email)}`);
   if (!response.ok) {
@@ -91,41 +104,71 @@ export default function KnownAllergies() {
   const environmentalAllergies = data?.['Environmental Allergies'] || '-';
   const foodIntolerances = data?.['Food Intolerances'] || '-';
 
+  const allergies = {
+    medication: medicationAllergies,
+    food: foodAllergies,
+    environmental: environmentalAllergies,
+    intolerances: foodIntolerances,
+  };
+
   return (
     <StyledAccordion>
       <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: theme => theme.palette.primary.main }} />}
-        aria-controls="known-allergies-content"
-        id="known-allergies-header"
+        aria-controls="allergies-content"
+        id="allergies-header"
       >
         <SectionTitle>Known Allergies</SectionTitle>
       </AccordionSummary>
       <AccordionDetails>
         <GridContainer>
-          <AllergyCategoryBox>
-            <Typography variant="subtitle2" sx={{ color: '#FFFFFF', mb: 1 }}>
+          <ContentBox>
+            <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
               Medication Allergies
             </Typography>
-            <Typography variant="body2" sx={{ color: '#999999' }}>{medicationAllergies}</Typography>
-          </AllergyCategoryBox>
-          <AllergyCategoryBox>
-            <Typography variant="subtitle2" sx={{ color: '#FFFFFF', mb: 1 }}>
+            <Typography sx={{ mb: 1 }}>
+              <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                Medication Allergies:
+              </Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {allergies.medication || '-'}</Box>
+            </Typography>
+          </ContentBox>
+
+          <ContentBox>
+            <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
               Food Allergies
             </Typography>
-            <Typography variant="body2" sx={{ color: '#999999' }}>{foodAllergies}</Typography>
-          </AllergyCategoryBox>
-          <AllergyCategoryBox>
-            <Typography variant="subtitle2" sx={{ color: '#FFFFFF', mb: 1 }}>
+            <Typography sx={{ mb: 1 }}>
+              <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                Food Allergies:
+              </Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {allergies.food || '-'}</Box>
+            </Typography>
+          </ContentBox>
+
+          <ContentBox>
+            <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
               Environmental Allergies
             </Typography>
-            <Typography variant="body2" sx={{ color: '#999999' }}>{environmentalAllergies}</Typography>
-          </AllergyCategoryBox>
-          <AllergyCategoryBox>
-            <Typography variant="subtitle2" sx={{ color: '#FFFFFF', mb: 1 }}>
+            <Typography sx={{ mb: 1 }}>
+              <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                Environmental Allergies:
+              </Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {allergies.environmental || '-'}</Box>
+            </Typography>
+          </ContentBox>
+
+          <ContentBox>
+            <Typography variant="subtitle2" sx={{ color: theme => theme.palette.primary.main, mb: 2 }}>
               Food Intolerances
             </Typography>
-            <Typography variant="body2" sx={{ color: '#999999' }}>{foodIntolerances}</Typography>
-          </AllergyCategoryBox>
+            <Typography sx={{ mb: 1 }}>
+              <Box component="span" sx={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                Food Intolerances:
+              </Box>
+              <Box component="span" sx={{ color: '#FFFFFF' }}> {allergies.intolerances || '-'}</Box>
+            </Typography>
+          </ContentBox>
         </GridContainer>
       </AccordionDetails>
     </StyledAccordion>

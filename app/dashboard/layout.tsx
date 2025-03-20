@@ -109,10 +109,9 @@ const StyledNavItem = styled(Link, {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+  { name: 'Plate Planner', href: '/dashboard/plate-planner', icon: ClipboardDocumentListIcon },
+  { name: 'Nutrient e-Nexus', href: '/dashboard/nutrient-nexus', icon: ChartBarIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: UserCircleIcon },
-  { name: 'Intake Assessments', href: '/dashboard/intake-assessments', icon: ClipboardDocumentListIcon },
-  { name: 'Daily Logs', href: '/dashboard/daily-logs', icon: CalendarIcon },
-  { name: 'Progress', href: '/dashboard/progress', icon: ChartBarIcon },
 ]
 
 export default function DashboardLayout({

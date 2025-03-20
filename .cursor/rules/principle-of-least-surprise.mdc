@@ -1,0 +1,9 @@
+---
+description: Principle of least surprise
+globs: 
+alwaysApply: false
+---
+
+# Principle of least surprise 
+Follow the principle of least surprise while coding.
+Do things the obvious way. 

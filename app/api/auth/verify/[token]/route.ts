@@ -1,44 +1,67 @@
-import { NextResponse } from 'next/server';
-import { initializeDb } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { supabase } from '@/lib/db';
+
+interface VerifyResponse {
+  success: boolean;
+  message: string;
+}
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { token: string } }
-) {
+): Promise<NextResponse<VerifyResponse>> {
   try {
     const { token } = params;
-    const db = await initializeDb();
 
-    // Find user with verification token
-    const user = await db.get(
-      'SELECT * FROM users WHERE verification_token = ?',
-      [token]
-    );
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: 'Verification token is required' },
+        { status: 400 }
+      );
+    }
 
-    if (!user) {
-      return new NextResponse('Invalid or expired verification token', {
-        status: 400
-      });
+    // Find and verify token
+    const { data: verificationToken, error: tokenError } = await supabase
+      .from('verification_tokens')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if (tokenError || !verificationToken || verificationToken.expires_at < new Date().toISOString()) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or expired verification token' },
+        { status: 400 }
+      );
     }
 
     // Update user verification status
-    await db.run(
-      'UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?',
-      [user.id]
-    );
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ is_verified: true })
+      .eq('id', verificationToken.user_id);
 
-    // Redirect to login page with success message
-    return new NextResponse(
-      '<html><body><h1>Email verified successfully!</h1><p>You can now log in to your account.</p><script>setTimeout(() => window.location.href = "/", 3000)</script></body></html>',
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html'
-        }
-      }
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to verify user' },
+        { status: 500 }
+      );
+    }
+
+    // Delete used token
+    await supabase
+      .from('verification_tokens')
+      .delete()
+      .eq('token', token);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Email verified successfully'
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, message: 'Failed to verify email' },
+      { status: 500 }
     );
-  } catch (error: any) {
-    console.error('Verification error:', error);
-    return new NextResponse('Internal server error', { status: 500 });
   }
 } 
