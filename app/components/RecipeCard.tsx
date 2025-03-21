@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { useState } from 'react';
-import { Paper, Box, Typography } from '@mui/material';
+import { Paper, Box, Typography, useMediaQuery, useTheme } from '@mui/material';
 
 interface Recipe {
   id: string;
@@ -20,6 +20,8 @@ interface Recipe {
 
 export function RecipeCard({ recipe, onClick }: { recipe: Recipe; onClick: () => void }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <Paper
@@ -32,20 +34,28 @@ export function RecipeCard({ recipe, onClick }: { recipe: Recipe; onClick: () =>
         overflow: 'hidden',
         transition: 'transform 0.2s, border-color 0.2s',
         width: '100%',
-        maxWidth: '200px',
+        maxWidth: isMobile ? '150px' : '200px',
         margin: '0 auto',
         '&:hover': {
           transform: 'translateY(-4px)',
           borderColor: 'rgba(255, 95, 31, 0.5)',
         },
+        [theme.breakpoints.down('sm')]: {
+          '&:hover': {
+            transform: 'translateY(-2px)',
+          },
+        }
       }}
     >
-      <Box sx={{ position: 'relative', height: '135px' }}>
+      <Box sx={{ 
+        position: 'relative', 
+        height: isMobile ? '110px' : '135px'
+      }}>
         <Image
           src={recipe.image}
           alt={recipe.name}
           fill
-          sizes="200px"
+          sizes={isMobile ? "150px" : "200px"}
           priority={false}
           loading="lazy"
           onLoad={() => setImageLoaded(true)}
@@ -67,12 +77,14 @@ export function RecipeCard({ recipe, onClick }: { recipe: Recipe; onClick: () =>
           }} />
         )}
       </Box>
-      <Box sx={{ p: 1.5 }}>
+      <Box sx={{ 
+        p: isMobile ? 1 : 1.5 
+      }}>
         <Typography 
           sx={{ 
             color: '#FFFFFF',
             fontWeight: 500,
-            fontSize: '0.9rem',
+            fontSize: isMobile ? '0.8rem' : '0.9rem',
             textAlign: 'center',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
