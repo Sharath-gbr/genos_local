@@ -9,10 +9,10 @@ interface VerifyResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  context: { params: { token: string } }
 ): Promise<NextResponse<VerifyResponse>> {
   try {
-    const { token } = params;
+    const { token } = context.params;
 
     if (!token) {
       return NextResponse.json(
