@@ -109,4 +109,34 @@ export async function getRecordById(id: string) {
     console.error('Error fetching record:', error);
     throw error;
   }
+}
+
+// Function to fetch records from a specific table and view
+export async function getAirtableRecords({ 
+  tableName, 
+  view = 'Grid View',
+  filterByFormula = ''
+}: { 
+  tableName: string; 
+  view?: string;
+  filterByFormula?: string;
+}) {
+  try {
+    const table = airtableBase(tableName);
+    const selectOptions: any = { view };
+    
+    if (filterByFormula) {
+      selectOptions.filterByFormula = filterByFormula;
+    }
+    
+    const records = await table.select(selectOptions).all();
+    
+    return records.map((record: AirtableRecord) => ({
+      id: record.id,
+      ...record.fields
+    }));
+  } catch (error) {
+    console.error('Error fetching records:', error);
+    throw error;
+  }
 } 
