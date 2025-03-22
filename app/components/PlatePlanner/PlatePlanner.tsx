@@ -89,6 +89,7 @@ const nutritionalPresets = {
 async function fetchRecipes(): Promise<Recipe[]> {
   try {
     console.log('Fetching recipes from API...');
+    // Update to the correct endpoint that exists in the app
     const response = await fetch('/api/recipes');
     
     if (!response.ok) {
@@ -104,13 +105,22 @@ async function fetchRecipes(): Promise<Recipe[]> {
     const data = await response.json();
     console.log('Successfully fetched recipes:', { count: data.length });
     
-    // Ensure data has expected format
+    // Ensure data has expected format and process it for consistency
     if (!Array.isArray(data)) {
       console.error('Invalid response format:', data);
       throw new Error('Invalid response format');
     }
     
-    return data;
+    // Process the data to ensure consistent format
+    return data.map(recipe => ({
+      ...recipe,
+      // Ensure ingredients is an array
+      ingredients: Array.isArray(recipe.ingredients) 
+        ? recipe.ingredients 
+        : (typeof recipe.ingredients === 'string' 
+          ? recipe.ingredients.split(',').map(i => i.trim()) 
+          : [])
+    }));
   } catch (error) {
     console.error('Error in fetchRecipes:', error);
     throw error;
@@ -1242,20 +1252,33 @@ export default function PlatePlanner() {
                         }
                       }
                     }}>
-                      {(selectedRecipe?.ingredients || '').split('\n')
-                        .filter(ingredient => ingredient.trim() !== '')
-                        .map((ingredient, index) => (
-                          <li key={index}>
-                            <Typography sx={{ 
-                              color: '#FFFFFF',
-                              fontWeight: 400,
-                              fontSize: '0.95rem',
-                              lineHeight: 1.4
-                            }}>
-                              {ingredient.trim().replace(/^[-–—]/, '').trim()}
-                            </Typography>
-                          </li>
-                      ))}
+                      {(() => {
+                        // Handle different ingredient formats safely
+                        let ingredientList: string[] = [];
+                        
+                        if (Array.isArray(selectedRecipe.ingredients)) {
+                          // If it's already an array, use it directly
+                          ingredientList = selectedRecipe.ingredients;
+                        } else if (typeof selectedRecipe.ingredients === 'string') {
+                          // If it's a string, split by newlines
+                          ingredientList = selectedRecipe.ingredients.split('\n');
+                        }
+                        
+                        return ingredientList
+                          .filter(ingredient => ingredient && ingredient.trim() !== '')
+                          .map((ingredient, index) => (
+                            <li key={index}>
+                              <Typography sx={{ 
+                                color: '#FFFFFF',
+                                fontWeight: 400,
+                                fontSize: '0.95rem',
+                                lineHeight: 1.4
+                              }}>
+                                {ingredient.trim().replace(/^[-–—]/, '').trim()}
+                              </Typography>
+                            </li>
+                          ));
+                      })()}
                     </Box>
 
                     {/* Instructions Section with Heading */}
@@ -1289,20 +1312,33 @@ export default function PlatePlanner() {
                         }
                       }
                     }}>
-                      {(selectedRecipe?.instructions || '').split('\n')
-                        .filter(step => step.trim() !== '')
-                        .map((step, index) => (
-                          <li key={index}>
-                            <Typography sx={{ 
-                              color: '#FFFFFF',
-                              fontWeight: 400,
-                              fontSize: '0.95rem',
-                              lineHeight: 1.6
-                            }}>
-                              {step.trim().replace(/^\d+\.\s*/, '').trim()}
-                            </Typography>
-                          </li>
-                      ))}
+                      {(() => {
+                        // Handle different instruction formats safely
+                        let instructionList: string[] = [];
+                        
+                        if (Array.isArray(selectedRecipe.instructions)) {
+                          // If it's already an array, use it directly
+                          instructionList = selectedRecipe.instructions;
+                        } else if (typeof selectedRecipe.instructions === 'string') {
+                          // If it's a string, split by newlines
+                          instructionList = selectedRecipe.instructions.split('\n');
+                        }
+                        
+                        return instructionList
+                          .filter(step => step && step.trim() !== '')
+                          .map((step, index) => (
+                            <li key={index}>
+                              <Typography sx={{ 
+                                color: '#FFFFFF',
+                                fontWeight: 400,
+                                fontSize: '0.95rem',
+                                lineHeight: 1.6
+                              }}>
+                                {step.trim().replace(/^\d+\.\s*/, '').trim()}
+                              </Typography>
+                            </li>
+                          ));
+                      })()}
                     </Box>
 
                     {/* Nutrition Section with Heading */}
