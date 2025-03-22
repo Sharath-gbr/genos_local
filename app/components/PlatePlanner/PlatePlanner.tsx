@@ -87,12 +87,34 @@ const nutritionalPresets = {
 
 // API function
 async function fetchRecipes(): Promise<Recipe[]> {
-  const response = await fetch('/api/recipes');
-  if (!response.ok) {
-    throw new Error('Failed to fetch recipes');
+  try {
+    console.log('Fetching recipes from API...');
+    const response = await fetch('/api/recipes');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Failed to fetch recipes:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData
+      });
+      throw new Error(`Failed to fetch recipes: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Successfully fetched recipes:', { count: data.length });
+    
+    // Ensure data has expected format
+    if (!Array.isArray(data)) {
+      console.error('Invalid response format:', data);
+      throw new Error('Invalid response format');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in fetchRecipes:', error);
+    throw error;
   }
-  const data = await response.json();
-  return data;
 }
 
 // Dynamically import Autocomplete with no SSR
@@ -563,7 +585,9 @@ export default function PlatePlanner() {
     queryKey: ['recipes'],
     queryFn: fetchRecipes,
     enabled: status === 'authenticated' && mounted,
-    retry: false
+    retry: 3, // Retry up to 3 times in case of network errors
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
+    onError: (err) => console.error('Error fetching recipes:', err)
   });
 
   // Add debug logging for filters
@@ -727,597 +751,619 @@ export default function PlatePlanner() {
       <Typography variant="h5" sx={{ color: '#FF5F1F', mb: 3, fontWeight: 600 }}>
         Plate Planner
       </Typography>
-      <GridContainer>
-        <ContentBox>
-          {/* Search and Filter Section */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-            {/* Search Bar */}
-            <Box>
-              <AutocompleteSearch
-                freeSolo
-                options={getSearchOptions(filteredRecipes)}
-                value={searchQuery}
-                onChange={(_, newValue) => handleSearchSelect(newValue?.label)}
-                onInputChange={(_, newValue) => setSearchQuery(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    placeholder="Search by recipe name or ingredients..."
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <>
-                          <SearchIcon sx={{ color: '#FF5F1F', mr: 1 }} />
-                          {params.InputProps.startAdornment}
-                        </>
-                      )
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        color: '#FFFFFF',
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                        '& fieldset': {
-                          borderColor: 'rgba(255, 95, 31, 0.2)',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'rgba(255, 95, 31, 0.5)',
-                        },
-                      }
-                    }}
-                  />
-                )}
-                renderOption={(props, option) => (
-                  <Box component="li" {...props}>
-                    <Box>
-                      <Typography>{option.label}</Typography>
-                      {option.subtitle && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: 'text.secondary',
-                            display: 'block',
-                            fontSize: '0.75rem'
-                          }}
-                        >
-                          Ingredients: {option.subtitle}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                )}
-                PopperComponent={(props) => (
-                  <Popper
-                    {...props}
-                    sx={{
-                      '& .MuiPaper-root': {
-                        backgroundColor: 'rgba(45, 45, 45, 0.95)',
-                        color: '#FFFFFF',
-                        border: '1px solid rgba(255, 95, 31, 0.2)',
-                      },
-                      '& .MuiAutocomplete-option': {
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 95, 31, 0.1)',
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: 'rgba(255, 95, 31, 0.2)',
-                        },
-                      },
-                    }}
-                  />
-                )}
-              />
-            </Box>
-
-            {/* Filters Row */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
-                <DietFilter value={dietFilter} onChange={setDietFilter} />
-              </Box>
-              <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
-                <MenuCategoryFilter value={menuCategory} onChange={setMenuCategory} />
-              </Box>
-              <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
-                <PhaseFilter value={phaseFilter} onChange={setPhaseFilter} />
-              </Box>
-              <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
-                <ProteinMealFilter value={proteinMealFilter} onChange={setProteinMealFilter} />
-              </Box>
-              <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setNutritionalFilterOpen(true)}
-                  sx={{
-                    width: '100%',
-                    height: '56px',
-                    borderColor: isNutritionalFilterActive ? '#FF5F1F' : 'rgba(255, 255, 255, 0.23)',
-                    color: isNutritionalFilterActive ? '#FF5F1F' : 'inherit',
-                    '&:hover': {
-                      borderColor: isNutritionalFilterActive ? '#FF5F1F' : 'rgba(255, 255, 255, 0.23)',
-                    },
-                    position: 'relative'
-                  }}
-                >
-                  Nutrition
-                  {isNutritionalFilterActive && (
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: '#FF5F1F',
-                        position: 'absolute',
-                        top: 8,
-                        right: 8
-                      }}
-                    />
-                  )}
-                </Button>
-              </Box>
-            </Box>
-
-            {/* Active Nutritional Filters */}
-            {isNutritionalFilterActive && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {Object.entries(nutritionalRange).map(([nutrient, [min, max]]) => {
-                  const defaultRange = nutritionalPresets.default[nutrient as keyof NutritionalRange];
-                  if (min === defaultRange[0] && max === defaultRange[1]) return null;
-                  
-                  return (
-                    <Chip
-                      key={nutrient}
-                      label={`${nutrient}: ${min}-${max}`}
-                      onDelete={() => {
-                        const newRange = {
-                          ...nutritionalRange,
-                          [nutrient]: [...nutritionalPresets.default[nutrient as keyof NutritionalRange]]
-                        };
-                        setNutritionalRange(newRange);
+      
+      {/* Error Message */}
+      {error && (
+        <Box sx={{ 
+          p: 3, 
+          mb: 3, 
+          backgroundColor: 'rgba(255, 0, 0, 0.1)', 
+          borderRadius: 1,
+          border: '1px solid rgba(255, 0, 0, 0.3)'
+        }}>
+          <Typography color="error" gutterBottom>
+            Error loading recipes
+          </Typography>
+          <Typography variant="body2">
+            We encountered a problem while loading the recipes. Please try again later or contact support if the issue persists.
+          </Typography>
+          <Button 
+            variant="outlined" 
+            color="error" 
+            sx={{ mt: 2 }}
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </Box>
+      )}
+      
+      {/* Loading State */}
+      {isLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+          <CircularProgress color="primary" />
+          <Typography sx={{ ml: 2 }}>Loading recipes...</Typography>
+        </Box>
+      )}
+      
+      {!isLoading && !error && (
+        <GridContainer>
+          <ContentBox>
+            {/* Search and Filter Section */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+              {/* Search Bar */}
+              <Box>
+                <AutocompleteSearch
+                  freeSolo
+                  options={getSearchOptions(filteredRecipes)}
+                  value={searchQuery}
+                  onChange={(_, newValue) => handleSearchSelect(newValue?.label)}
+                  onInputChange={(_, newValue) => setSearchQuery(newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      fullWidth
+                      placeholder="Search by recipe name or ingredients..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <SearchIcon sx={{ color: '#FF5F1F', mr: 1 }} />
+                            {params.InputProps.startAdornment}
+                          </>
+                        )
                       }}
                       sx={{
-                        backgroundColor: 'rgba(255, 95, 31, 0.1)',
-                        color: '#FF5F1F',
-                        '& .MuiChip-deleteIcon': {
-                          color: '#FF5F1F'
+                        '& .MuiOutlinedInput-root': {
+                          color: '#FFFFFF',
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          '& fieldset': {
+                            borderColor: 'rgba(255, 95, 31, 0.2)',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: 'rgba(255, 95, 31, 0.5)',
+                          },
                         }
                       }}
                     />
-                  );
-                })}
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Box>
+                        <Typography>{option.label}</Typography>
+                        {option.subtitle && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'text.secondary',
+                              display: 'block',
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            Ingredients: {option.subtitle}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+                  PopperComponent={(props) => (
+                    <Popper
+                      {...props}
+                      sx={{
+                        '& .MuiPaper-root': {
+                          backgroundColor: 'rgba(45, 45, 45, 0.95)',
+                          color: '#FFFFFF',
+                          border: '1px solid rgba(255, 95, 31, 0.2)',
+                        },
+                        '& .MuiAutocomplete-option': {
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 95, 31, 0.1)',
+                          },
+                          '&.Mui-focused': {
+                            backgroundColor: 'rgba(255, 95, 31, 0.2)',
+                          },
+                        },
+                      }}
+                    />
+                  )}
+                />
               </Box>
-            )}
 
-            {/* Nutritional Filter Dialog */}
-            <NutritionalFilter
-              value={nutritionalRange}
-              onChange={setNutritionalRange}
-              open={nutritionalFilterOpen}
-              onClose={() => setNutritionalFilterOpen(false)}
-            />
-
-            {/* Show count of filtered recipes */}
-            <Box sx={{ mt: 2 }}>
-              {isLoading ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <CircularProgress size={20} sx={{ color: '#FF5F1F' }} />
-                  <Typography sx={{ color: '#FFFFFF' }}>
-                    Loading recipes...
-                  </Typography>
+              {/* Filters Row */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
+                  <DietFilter value={dietFilter} onChange={setDietFilter} />
                 </Box>
-              ) : (
+                <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
+                  <MenuCategoryFilter value={menuCategory} onChange={setMenuCategory} />
+                </Box>
+                <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
+                  <PhaseFilter value={phaseFilter} onChange={setPhaseFilter} />
+                </Box>
+                <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
+                  <ProteinMealFilter value={proteinMealFilter} onChange={setProteinMealFilter} />
+                </Box>
+                <Box sx={{ minWidth: 200, maxWidth: 250, flex: '1 1 auto' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setNutritionalFilterOpen(true)}
+                    sx={{
+                      width: '100%',
+                      height: '56px',
+                      borderColor: isNutritionalFilterActive ? '#FF5F1F' : 'rgba(255, 255, 255, 0.23)',
+                      color: isNutritionalFilterActive ? '#FF5F1F' : 'inherit',
+                      '&:hover': {
+                        borderColor: isNutritionalFilterActive ? '#FF5F1F' : 'rgba(255, 255, 255, 0.23)',
+                      },
+                      position: 'relative'
+                    }}
+                  >
+                    Nutrition
+                    {isNutritionalFilterActive && (
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          backgroundColor: '#FF5F1F',
+                          position: 'absolute',
+                          top: 8,
+                          right: 8
+                        }}
+                      />
+                    )}
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Active Nutritional Filters */}
+              {isNutritionalFilterActive && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {Object.entries(nutritionalRange).map(([nutrient, [min, max]]) => {
+                    const defaultRange = nutritionalPresets.default[nutrient as keyof NutritionalRange];
+                    if (min === defaultRange[0] && max === defaultRange[1]) return null;
+                    
+                    return (
+                      <Chip
+                        key={nutrient}
+                        label={`${nutrient}: ${min}-${max}`}
+                        onDelete={() => {
+                          const newRange = {
+                            ...nutritionalRange,
+                            [nutrient]: [...nutritionalPresets.default[nutrient as keyof NutritionalRange]]
+                          };
+                          setNutritionalRange(newRange);
+                        }}
+                        sx={{
+                          backgroundColor: 'rgba(255, 95, 31, 0.1)',
+                          color: '#FF5F1F',
+                          '& .MuiChip-deleteIcon': {
+                            color: '#FF5F1F'
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+
+              {/* Nutritional Filter Dialog */}
+              <NutritionalFilter
+                value={nutritionalRange}
+                onChange={setNutritionalRange}
+                open={nutritionalFilterOpen}
+                onClose={() => setNutritionalFilterOpen(false)}
+              />
+
+              {/* Show count of filtered recipes */}
+              <Box sx={{ mt: 2 }}>
                 <Typography sx={{ color: '#FFFFFF' }}>
                   {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'} found
                   {searchQuery && ` for "${searchQuery}"`}
                   {dietFilter !== 'all' && ` in ${dietFilter}`}
                   {menuCategory !== 'all' && ` category: ${menuCategory}`}
                 </Typography>
-              )}
+              </Box>
             </Box>
 
-            {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {error instanceof Error ? error.message : 'Error loading recipes'}
-              </Alert>
-            )}
-          </Box>
-
-          {/* Recipe Grid Display */}
-          <Box sx={{ 
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: 4,
-            mb: 4,
-            mx: 'auto',
-            maxWidth: '90%'
-          }}>
-            {isLoading ? (
-              // Show loading skeleton cards
-              [...Array(recipesPerPage)].map((_, index) => (
-                <Paper
-                  key={`skeleton-${index}`}
-                  sx={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    borderRadius: 2,
-                    border: '1px solid rgba(255, 95, 31, 0.2)',
-                    overflow: 'hidden',
-                    width: '100%',
-                    maxWidth: '200px',
-                    margin: '0 auto',
-                    height: '200px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <Box sx={{ 
-                    height: '135px', 
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    animation: 'pulse 1.5s infinite ease-in-out'
-                  }} />
-                  <Box sx={{ 
-                    p: 1.5,
-                    height: '65px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    animation: 'pulse 1.5s infinite ease-in-out',
-                    mt: 'auto'
-                  }} />
-                </Paper>
-              ))
-            ) : (
-              // Get current page recipes
-              filteredRecipes
-                .slice((page - 1) * recipesPerPage, page * recipesPerPage)
-                .map((recipe) => (
+            {/* Recipe Grid Display */}
+            <Box sx={{ 
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: 4,
+              mb: 4,
+              mx: 'auto',
+              maxWidth: '90%'
+            }}>
+              {isLoading ? (
+                // Show loading skeleton cards
+                [...Array(recipesPerPage)].map((_, index) => (
                   <Paper
-                    key={recipe.id}
-                    onClick={() => setSelectedRecipe(recipe)}
+                    key={`skeleton-${index}`}
                     sx={{
-                      cursor: 'pointer',
                       backgroundColor: 'rgba(0, 0, 0, 0.7)',
                       borderRadius: 2,
                       border: '1px solid rgba(255, 95, 31, 0.2)',
                       overflow: 'hidden',
-                      transition: 'transform 0.2s, border-color 0.2s',
                       width: '100%',
                       maxWidth: '200px',
                       margin: '0 auto',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        borderColor: 'rgba(255, 95, 31, 0.5)',
-                      },
+                      height: '200px',
+                      display: 'flex',
+                      flexDirection: 'column',
                     }}
                   >
-                    <Box sx={{ position: 'relative', height: '135px' }}>
-                      <Image
-                        src={recipe.image || '/placeholder-recipe.jpg'}
-                        alt={recipe.name}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                      />
-                      {/* Show count badge if multiple recipes exist with same name */}
-                      {groupedRecipes[recipe.name.toLowerCase()]?.length > 1 && (
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            backgroundColor: 'rgba(255, 95, 31, 0.9)',
-                            color: '#FFFFFF',
-                            borderRadius: '50%',
-                            width: 24,
-                            height: 24,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          {groupedRecipes[recipe.name.toLowerCase()].length}
-                        </Box>
-                      )}
-                    </Box>
-                    <Box sx={{ p: 1.5 }}>
-                      <Typography 
-                        sx={{ 
-                          color: '#FFFFFF',
-                          fontWeight: 500,
-                          fontSize: '0.9rem',
-                          textAlign: 'center',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          mb: 1
-                        }}
-                      >
-                        {recipe.name}
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexWrap: 'wrap', 
-                        gap: 0.5,
-                        justifyContent: 'center'
-                      }}>
-                        {recipe.dietType?.[0] && (
-                          <Chip
-                            label={recipe.dietType[0]}
-                            size="small"
-                            sx={{
-                              backgroundColor: 'rgba(255, 95, 31, 0.1)',
-                              color: '#FFFFFF',
-                              fontSize: '0.7rem',
-                              height: 20
-                            }}
-                          />
-                        )}
-                        {recipe.phase && (
-                          <Chip
-                            label={recipe.phase.split(' ')[0]}
-                            size="small"
-                            sx={{
-                              backgroundColor: 'rgba(255, 95, 31, 0.1)',
-                              color: '#FFFFFF',
-                              fontSize: '0.7rem',
-                              height: 20
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
+                    <Box sx={{ 
+                      height: '135px', 
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      animation: 'pulse 1.5s infinite ease-in-out'
+                    }} />
+                    <Box sx={{ 
+                      p: 1.5,
+                      height: '65px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      animation: 'pulse 1.5s infinite ease-in-out',
+                      mt: 'auto'
+                    }} />
                   </Paper>
                 ))
-            )}
-          </Box>
+              ) : (
+                // Get current page recipes
+                filteredRecipes
+                  .slice((page - 1) * recipesPerPage, page * recipesPerPage)
+                  .map((recipe) => (
+                    <Paper
+                      key={recipe.id}
+                      onClick={() => setSelectedRecipe(recipe)}
+                      sx={{
+                        cursor: 'pointer',
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255, 95, 31, 0.2)',
+                        overflow: 'hidden',
+                        transition: 'transform 0.2s, border-color 0.2s',
+                        width: '100%',
+                        maxWidth: '200px',
+                        margin: '0 auto',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          borderColor: 'rgba(255, 95, 31, 0.5)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ position: 'relative', height: '135px' }}>
+                        <Image
+                          src={recipe.image || '/placeholder-recipe.jpg'}
+                          alt={recipe.name}
+                          fill
+                          style={{ objectFit: 'cover' }}
+                        />
+                        {/* Show count badge if multiple recipes exist with same name */}
+                        {groupedRecipes[recipe.name.toLowerCase()]?.length > 1 && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              backgroundColor: 'rgba(255, 95, 31, 0.9)',
+                              color: '#FFFFFF',
+                              borderRadius: '50%',
+                              width: 24,
+                              height: 24,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            {groupedRecipes[recipe.name.toLowerCase()].length}
+                          </Box>
+                        )}
+                      </Box>
+                      <Box sx={{ p: 1.5 }}>
+                        <Typography 
+                          sx={{ 
+                            color: '#FFFFFF',
+                            fontWeight: 500,
+                            fontSize: '0.9rem',
+                            textAlign: 'center',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            mb: 1
+                          }}
+                        >
+                          {recipe.name}
+                        </Typography>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          flexWrap: 'wrap', 
+                          gap: 0.5,
+                          justifyContent: 'center'
+                        }}>
+                          {recipe.dietType?.[0] && (
+                            <Chip
+                              label={recipe.dietType[0]}
+                              size="small"
+                              sx={{
+                                backgroundColor: 'rgba(255, 95, 31, 0.1)',
+                                color: '#FFFFFF',
+                                fontSize: '0.7rem',
+                                height: 20
+                              }}
+                            />
+                          )}
+                          {recipe.phase && (
+                            <Chip
+                              label={recipe.phase.split(' ')[0]}
+                              size="small"
+                              sx={{
+                                backgroundColor: 'rgba(255, 95, 31, 0.1)',
+                                color: '#FFFFFF',
+                                fontSize: '0.7rem',
+                                height: 20
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+                    </Paper>
+                  ))
+              )}
+            </Box>
 
-          {/* Pagination Controls */}
-          {!isLoading && filteredRecipes.length > 0 && (
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'center',
-              mt: 4,
-              mb: 2
-            }}>
-              <Pagination
-                count={Math.ceil(filteredRecipes.length / recipesPerPage)}
-                page={page}
-                onChange={(_, newPage) => setPage(newPage)}
-                color="primary"
-                sx={{
-                  '& .MuiPaginationItem-root': {
-                    color: '#FFFFFF',
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(255, 95, 31, 0.2)',
+            {/* Pagination Controls */}
+            {!isLoading && filteredRecipes.length > 0 && (
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center',
+                mt: 4,
+                mb: 2
+              }}>
+                <Pagination
+                  count={Math.ceil(filteredRecipes.length / recipesPerPage)}
+                  page={page}
+                  onChange={(_, newPage) => setPage(newPage)}
+                  color="primary"
+                  sx={{
+                    '& .MuiPaginationItem-root': {
+                      color: '#FFFFFF',
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(255, 95, 31, 0.2)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 95, 31, 0.3)',
+                        },
+                      },
                       '&:hover': {
-                        backgroundColor: 'rgba(255, 95, 31, 0.3)',
+                        backgroundColor: 'rgba(255, 95, 31, 0.1)',
                       },
                     },
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 95, 31, 0.1)',
-                    },
-                  },
-                }}
-              />
-            </Box>
-          )}
-
-          {/* Recipe Details Modal */}
-          {selectedRecipe && (
-            <Paper 
-              elevation={3}
-              sx={{
-                position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '90%',
-                maxWidth: '1200px',
-                maxHeight: '90vh',
-                overflow: 'auto',
-                backgroundColor: 'rgba(0, 0, 0, 0.95)',
-                borderRadius: 2,
-                border: '1px solid rgba(255, 95, 31, 0.2)',
-                p: 4,
-                zIndex: 1000,
-              }}
-            >
-              <Box sx={{ 
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                cursor: 'pointer',
-                color: '#FFFFFF',
-                '&:hover': { color: '#FF5F1F' }
-              }}
-                onClick={() => setSelectedRecipe(null)}
-              >
-                ✕
-              </Box>
-              <Box sx={{ display: 'flex', gap: 3 }}>
-                <Box 
-                  sx={{ 
-                    width: '300px',
-                    height: '400px',
-                    position: 'relative',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
                   }}
+                />
+              </Box>
+            )}
+
+            {/* Recipe Details Modal */}
+            {selectedRecipe && (
+              <Paper 
+                elevation={3}
+                sx={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '90%',
+                  maxWidth: '1200px',
+                  maxHeight: '90vh',
+                  overflow: 'auto',
+                  backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '1px solid rgba(255, 95, 31, 0.2)',
+                  p: 4,
+                  zIndex: 1000,
+                }}
+              >
+                <Box sx={{ 
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  cursor: 'pointer',
+                  color: '#FFFFFF',
+                  '&:hover': { color: '#FF5F1F' }
+                }}
+                  onClick={() => setSelectedRecipe(null)}
                 >
-                  <Image 
-                    src={selectedRecipe.image || '/placeholder-recipe.jpg'}
-                    alt={selectedRecipe.name}
-                    fill
-                    style={{ 
-                      objectFit: 'cover',
-                      borderRadius: '16px'
-                    }}
-                    priority
-                  />
+                  ✕
                 </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography 
-                    variant="h4" 
+                <Box sx={{ display: 'flex', gap: 3 }}>
+                  <Box 
                     sx={{ 
-                      color: '#FFFFFF',
-                      fontWeight: 600,
-                      mb: 3
+                      width: '300px',
+                      height: '400px',
+                      position: 'relative',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
                     }}
                   >
-                    {selectedRecipe.name}
-                  </Typography>
-
-                  {/* Ingredients Section with Heading */}
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      color: '#FF5F1F',
-                      fontWeight: 500,
-                      mb: 2
-                    }}
-                  >
-                    Ingredients
-                  </Typography>
-                  <Box component="ul" sx={{ 
-                    listStyle: 'none', 
-                    p: 0, 
-                    m: 0,
-                    mb: 4,
-                    '& li': {
-                      display: 'flex',
-                      alignItems: 'center',
-                      mb: 0.5,
-                      '&::before': {
-                        content: '"•"',
-                        color: '#FF5F1F',
-                        fontWeight: 'bold',
-                        fontSize: '1.2em',
-                        width: '0.75em',
-                        marginRight: '0.5em',
-                        display: 'inline-block',
-                        lineHeight: 1
-                      }
-                    }
-                  }}>
-                    {(selectedRecipe?.ingredients || '').split('\n')
-                      .filter(ingredient => ingredient.trim() !== '')
-                      .map((ingredient, index) => (
-                        <li key={index}>
-                          <Typography sx={{ 
-                            color: '#FFFFFF',
-                            fontWeight: 400,
-                            fontSize: '0.95rem',
-                            lineHeight: 1.4
-                          }}>
-                            {ingredient.trim().replace(/^[-–—]/, '').trim()}
-                          </Typography>
-                        </li>
-                    ))}
+                    <Image 
+                      src={selectedRecipe.image || '/placeholder-recipe.jpg'}
+                      alt={selectedRecipe.name}
+                      fill
+                      style={{ 
+                        objectFit: 'cover',
+                        borderRadius: '16px'
+                      }}
+                      priority
+                    />
                   </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        color: '#FFFFFF',
+                        fontWeight: 600,
+                        mb: 3
+                      }}
+                    >
+                      {selectedRecipe.name}
+                    </Typography>
 
-                  {/* Instructions Section with Heading */}
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      color: '#FF5F1F',
-                      fontWeight: 500,
-                      mb: 2
-                    }}
-                  >
-                    Instructions
-                  </Typography>
-                  <Box component="ol" sx={{ 
-                    listStyle: 'none', 
-                    p: 0,
-                    m: 0,
-                    mb: 4,
-                    '& li': {
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      mb: 1,
-                      counterIncrement: 'step-counter',
-                      '&::before': {
-                        content: 'counter(step-counter) "."',
+                    {/* Ingredients Section with Heading */}
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
                         color: '#FF5F1F',
                         fontWeight: 500,
-                        minWidth: '1.5em',
-                        marginRight: '0.5em',
-                        fontSize: '0.95rem'
+                        mb: 2
+                      }}
+                    >
+                      Ingredients
+                    </Typography>
+                    <Box component="ul" sx={{ 
+                      listStyle: 'none', 
+                      p: 0, 
+                      m: 0,
+                      mb: 4,
+                      '& li': {
+                        display: 'flex',
+                        alignItems: 'center',
+                        mb: 0.5,
+                        '&::before': {
+                          content: '"•"',
+                          color: '#FF5F1F',
+                          fontWeight: 'bold',
+                          fontSize: '1.2em',
+                          width: '0.75em',
+                          marginRight: '0.5em',
+                          display: 'inline-block',
+                          lineHeight: 1
+                        }
                       }
-                    }
-                  }}>
-                    {(selectedRecipe?.instructions || '').split('\n')
-                      .filter(step => step.trim() !== '')
-                      .map((step, index) => (
-                        <li key={index}>
-                          <Typography sx={{ 
-                            color: '#FFFFFF',
-                            fontWeight: 400,
-                            fontSize: '0.95rem',
-                            lineHeight: 1.6
-                          }}>
-                            {step.trim().replace(/^\d+\.\s*/, '').trim()}
-                          </Typography>
-                        </li>
-                    ))}
-                  </Box>
+                    }}>
+                      {(selectedRecipe?.ingredients || '').split('\n')
+                        .filter(ingredient => ingredient.trim() !== '')
+                        .map((ingredient, index) => (
+                          <li key={index}>
+                            <Typography sx={{ 
+                              color: '#FFFFFF',
+                              fontWeight: 400,
+                              fontSize: '0.95rem',
+                              lineHeight: 1.4
+                            }}>
+                              {ingredient.trim().replace(/^[-–—]/, '').trim()}
+                            </Typography>
+                          </li>
+                      ))}
+                    </Box>
 
-                  {/* Nutrition Section with Heading */}
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      color: '#FF5F1F',
-                      fontWeight: 500,
-                      mb: 2
-                    }}
-                  >
-                    Nutrition Facts
-                  </Typography>
-                  <Box sx={{ 
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 2,
-                    p: 2,
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: 1,
-                  }}>
-                    <Box>
-                      <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
-                        Calories
-                      </Typography>
-                      <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
-                        {selectedRecipe.calories}
-                      </Typography>
+                    {/* Instructions Section with Heading */}
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        color: '#FF5F1F',
+                        fontWeight: 500,
+                        mb: 2
+                      }}
+                    >
+                      Instructions
+                    </Typography>
+                    <Box component="ol" sx={{ 
+                      listStyle: 'none', 
+                      p: 0,
+                      m: 0,
+                      mb: 4,
+                      '& li': {
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        mb: 1,
+                        counterIncrement: 'step-counter',
+                        '&::before': {
+                          content: 'counter(step-counter) "."',
+                          color: '#FF5F1F',
+                          fontWeight: 500,
+                          minWidth: '1.5em',
+                          marginRight: '0.5em',
+                          fontSize: '0.95rem'
+                        }
+                      }
+                    }}>
+                      {(selectedRecipe?.instructions || '').split('\n')
+                        .filter(step => step.trim() !== '')
+                        .map((step, index) => (
+                          <li key={index}>
+                            <Typography sx={{ 
+                              color: '#FFFFFF',
+                              fontWeight: 400,
+                              fontSize: '0.95rem',
+                              lineHeight: 1.6
+                            }}>
+                              {step.trim().replace(/^\d+\.\s*/, '').trim()}
+                            </Typography>
+                          </li>
+                      ))}
                     </Box>
-                    <Box>
-                      <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
-                        Carbohydrates
-                      </Typography>
-                      <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
-                        {selectedRecipe.carbs}g
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
-                        Proteins
-                      </Typography>
-                      <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
-                        {selectedRecipe.proteins}g
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
-                        Fats
-                      </Typography>
-                      <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
-                        {selectedRecipe.fats}g
-                      </Typography>
+
+                    {/* Nutrition Section with Heading */}
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        color: '#FF5F1F',
+                        fontWeight: 500,
+                        mb: 2
+                      }}
+                    >
+                      Nutrition Facts
+                    </Typography>
+                    <Box sx={{ 
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: 2,
+                      p: 2,
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 1,
+                    }}>
+                      <Box>
+                        <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
+                          Calories
+                        </Typography>
+                        <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
+                          {selectedRecipe.calories}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
+                          Carbohydrates
+                        </Typography>
+                        <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
+                          {selectedRecipe.carbs}g
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
+                          Proteins
+                        </Typography>
+                        <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
+                          {selectedRecipe.proteins}g
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ color: '#FF5F1F', fontSize: '0.9rem', mb: 0.5 }}>
+                          Fats
+                        </Typography>
+                        <Typography sx={{ color: '#FFFFFF', fontWeight: 500 }}>
+                          {selectedRecipe.fats}g
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
                 </Box>
-              </Box>
-            </Paper>
-          )}
-        </ContentBox>
-      </GridContainer>
+              </Paper>
+            )}
+          </ContentBox>
+        </GridContainer>
+      )}
     </Box>
   );
 } 
