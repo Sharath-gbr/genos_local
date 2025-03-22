@@ -114,11 +114,24 @@ async function fetchRecipes(): Promise<Recipe[]> {
     // Process the data to ensure consistent format
     return data.map(recipe => ({
       ...recipe,
-      // Ensure ingredients is an array
+      // Ensure ingredients is an array of individual items
       ingredients: Array.isArray(recipe.ingredients) 
         ? recipe.ingredients 
         : (typeof recipe.ingredients === 'string' 
-          ? recipe.ingredients.split(',').map(i => i.trim()) 
+          ? recipe.ingredients
+              // First, split by new lines if they exist
+              .split(/\n/)
+              // If there aren't multiple lines, try splitting by commas or dashes
+              .flatMap(line => 
+                line.includes(',') || line.includes(' - ') 
+                  ? line
+                      .replace(/ - /g, ',')  // Replace " - " with commas for consistent splitting
+                      .split(',')
+                      .map(i => i.trim())
+                      .filter(i => i)
+                  : line
+              )
+              .filter(item => item && item.trim() !== '')
           : [])
     }));
   } catch (error) {
@@ -1260,10 +1273,19 @@ export default function PlatePlanner() {
                           // If it's already an array, use it directly
                           ingredientList = selectedRecipe.ingredients;
                         } else if (typeof selectedRecipe.ingredients === 'string') {
-                          // If it's a string, split by newlines or commas
-                          ingredientList = selectedRecipe.ingredients.includes(',') 
-                            ? selectedRecipe.ingredients.split(',').map(i => i.trim())
-                            : selectedRecipe.ingredients.split('\n');
+                          // For string format, process it similar to how we do in fetchRecipes
+                          ingredientList = selectedRecipe.ingredients
+                            .split(/\n/)
+                            .flatMap(line => 
+                              line.includes(',') || line.includes(' - ') 
+                                ? line
+                                    .replace(/ - /g, ',')
+                                    .split(',')
+                                    .map(i => i.trim())
+                                    .filter(i => i)
+                                : line
+                            )
+                            .filter(item => item && item.trim() !== '');
                         }
                         
                         return ingredientList
