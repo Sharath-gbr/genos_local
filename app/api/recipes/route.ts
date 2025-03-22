@@ -83,7 +83,7 @@ export async function GET(request: Request) {
         id: record.id,
         name: record.fields['Recipe Name'] || '',
         image: imageUrl,
-        ingredients: record.fields['Ingredients'] ? String(record.fields['Ingredients']).split(',').map(i => i.trim()) : [],
+        ingredients: record.fields['Ingredients'] ? String(record.fields['Ingredients']).split('\n').map(i => i.trim().replace(/^[-–—]/, '').trim()).filter(i => i) : [],
         instructions: record.fields['Instructions'] || '',
         calories: record.fields['Calories'] || 0,
         carbs: record.fields['Carbs'] || 0,

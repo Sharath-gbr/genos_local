@@ -1273,19 +1273,12 @@ export default function PlatePlanner() {
                           // If it's already an array, use it directly
                           ingredientList = selectedRecipe.ingredients;
                         } else if (typeof selectedRecipe.ingredients === 'string') {
-                          // For string format, process it similar to how we do in fetchRecipes
+                          // For string format, split by newlines and clean up each ingredient
                           ingredientList = selectedRecipe.ingredients
-                            .split(/\n/)
-                            .flatMap(line => 
-                              line.includes(',') || line.includes(' - ') 
-                                ? line
-                                    .replace(/ - /g, ',')
-                                    .split(',')
-                                    .map(i => i.trim())
-                                    .filter(i => i)
-                                : line
-                            )
-                            .filter(item => item && item.trim() !== '');
+                            .split('\n')
+                            .map(line => line.trim())
+                            .map(line => line.replace(/^[-–—]/, '').trim())
+                            .filter(line => line && line.trim() !== '');
                         }
                         
                         return ingredientList

@@ -97,9 +97,25 @@ async function migrateRecipes() {
         let ingredients = '';
         if (fields['Ingredients']) {
           if (Array.isArray(fields['Ingredients'])) {
-            ingredients = fields['Ingredients'].join('\n');
+            ingredients = fields['Ingredients']
+              .map(ingredient => {
+                // Add a bullet point if not already there
+                const trimmed = ingredient.trim();
+                return trimmed.startsWith('-') ? trimmed : `- ${trimmed}`;
+              })
+              .join('\n');
           } else {
-            ingredients = fields['Ingredients'].toString();
+            // Split by any delimiter (commas, newlines) and format consistently
+            ingredients = fields['Ingredients']
+              .toString()
+              .split(/[,\n]/)
+              .map(ingredient => {
+                const trimmed = ingredient.trim();
+                if (!trimmed) return '';
+                return trimmed.startsWith('-') ? trimmed : `- ${trimmed}`;
+              })
+              .filter(Boolean)
+              .join('\n');
           }
         }
 
