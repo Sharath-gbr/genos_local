@@ -140,7 +140,7 @@ const Overlay = styled('div')(({ theme }) => ({
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Plate Planner', href: '/dashboard/plate-planner', icon: ClipboardDocumentListIcon },
-  { name: 'Nutrient e-Nexus', href: '/dashboard/nutrient-nexus', icon: ChartBarIcon },
+  { name: 'Food Sensitivity Hub', href: '/dashboard/nutrient-nexus', icon: ChartBarIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: UserCircleIcon },
 ]
 
@@ -174,8 +174,18 @@ export default function DashboardLayout({
       
       <StyledSidebar isexpanded={isExpanded ? 'true' : 'false'} ismobile={isMobile ? 'true' : 'false'}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h5" sx={{ color: 'primary.main' }}>
-            {isExpanded ? 'NEN' : 'N'}
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              color: 'primary.main',
+              fontSize: isExpanded ? '1.25rem' : '1.5rem',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: isExpanded ? '220px' : '60px'
+            }}
+          >
+            {isExpanded ? 'Nutrient e-Nexus' : 'NeN'}
           </Typography>
           <ToggleButton onClick={() => setIsExpanded(!isExpanded)}>
             {isExpanded ? <ChevronLeftIcon /> : <MenuIcon />}
