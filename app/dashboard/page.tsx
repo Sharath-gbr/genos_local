@@ -178,10 +178,10 @@ export default function Dashboard() {
 
       <WelcomeSection>
         <WelcomeText>
-          Welcome to Dashboard
+          Welcome
         </WelcomeText>
         <SubText>
-          Logged in as: {session?.user?.email}
+          {/* Logged in email hidden as requested */}
         </SubText>
 
         <Grid container spacing={isMobile ? 2 : 3}>
