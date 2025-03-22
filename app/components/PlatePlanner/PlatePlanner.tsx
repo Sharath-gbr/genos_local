@@ -1186,15 +1186,16 @@ export default function PlatePlanner() {
                 >
                   ✕
                 </Box>
-                <Box sx={{ display: 'flex', gap: 3 }}>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
                   <Box 
                     sx={{ 
-                      width: '300px',
-                      height: '400px',
+                      width: { xs: '100%', md: '300px' },
+                      height: { xs: '200px', md: '400px' },
                       position: 'relative',
                       borderRadius: '16px',
                       overflow: 'hidden',
                       boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+                      mb: { xs: 2, md: 0 }
                     }}
                   >
                     <Image 
@@ -1208,7 +1209,7 @@ export default function PlatePlanner() {
                       priority
                     />
                   </Box>
-                  <Box sx={{ flex: 1 }}>
+                  <Box sx={{ flex: 1, overflow: 'auto', maxHeight: { xs: '60vh', md: 'none' } }}>
                     <Typography 
                       variant="h4" 
                       sx={{ 
@@ -1237,18 +1238,17 @@ export default function PlatePlanner() {
                       m: 0,
                       mb: 4,
                       '& li': {
-                        display: 'flex',
-                        alignItems: 'center',
-                        mb: 0.5,
+                        position: 'relative',
+                        paddingLeft: '1.5rem',
+                        mb: 1.2,
                         '&::before': {
                           content: '"•"',
                           color: '#FF5F1F',
                           fontWeight: 'bold',
                           fontSize: '1.2em',
-                          width: '0.75em',
-                          marginRight: '0.5em',
-                          display: 'inline-block',
-                          lineHeight: 1
+                          position: 'absolute',
+                          left: 0,
+                          top: '0.1rem'
                         }
                       }
                     }}>
@@ -1260,8 +1260,10 @@ export default function PlatePlanner() {
                           // If it's already an array, use it directly
                           ingredientList = selectedRecipe.ingredients;
                         } else if (typeof selectedRecipe.ingredients === 'string') {
-                          // If it's a string, split by newlines
-                          ingredientList = selectedRecipe.ingredients.split('\n');
+                          // If it's a string, split by newlines or commas
+                          ingredientList = selectedRecipe.ingredients.includes(',') 
+                            ? selectedRecipe.ingredients.split(',').map(i => i.trim())
+                            : selectedRecipe.ingredients.split('\n');
                         }
                         
                         return ingredientList
@@ -1272,7 +1274,9 @@ export default function PlatePlanner() {
                                 color: '#FFFFFF',
                                 fontWeight: 400,
                                 fontSize: '0.95rem',
-                                lineHeight: 1.4
+                                lineHeight: 1.6,
+                                display: 'block',
+                                mb: 1
                               }}>
                                 {ingredient.trim().replace(/^[-–—]/, '').trim()}
                               </Typography>
@@ -1300,15 +1304,17 @@ export default function PlatePlanner() {
                       '& li': {
                         display: 'flex',
                         alignItems: 'flex-start',
-                        mb: 1,
+                        mb: 2,
                         counterIncrement: 'step-counter',
+                        position: 'relative',
+                        paddingLeft: '2rem',
                         '&::before': {
                           content: 'counter(step-counter) "."',
                           color: '#FF5F1F',
                           fontWeight: 500,
-                          minWidth: '1.5em',
-                          marginRight: '0.5em',
-                          fontSize: '0.95rem'
+                          position: 'absolute',
+                          left: 0,
+                          fontSize: '1rem'
                         }
                       }
                     }}>
@@ -1332,7 +1338,8 @@ export default function PlatePlanner() {
                                 color: '#FFFFFF',
                                 fontWeight: 400,
                                 fontSize: '0.95rem',
-                                lineHeight: 1.6
+                                lineHeight: 1.8,
+                                display: 'block'
                               }}>
                                 {step.trim().replace(/^\d+\.\s*/, '').trim()}
                               </Typography>
