@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useCompatSession } from '@/lib/migrationHelper';
 import {
   Card,
   CardContent,
@@ -74,7 +74,7 @@ const FieldValue = styled(Typography)(({ theme }) => ({
 }));
 
 export default function ProfileWidget() {
-  const { data: session } = useSession();
+  const { data: session } = useCompatSession();
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

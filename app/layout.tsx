@@ -3,8 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from './providers';
 import { RootWrapper } from './rootStyles';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -13,17 +11,19 @@ export const metadata: Metadata = {
   description: "Your personal nutrition and wellness journey",
 };
 
-export default async function RootLayout({
+/**
+ * Root layout component that wraps the entire application
+ * Provides global styles, fonts, and context providers
+ */
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions);
-
   return (
     <html lang="en">
       <body style={{ margin: 0, padding: 0 }}>
-        <Providers session={session}>
+        <Providers>
           <RootWrapper>
             {children}
           </RootWrapper>

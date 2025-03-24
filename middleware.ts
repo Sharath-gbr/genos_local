@@ -1,21 +1,29 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 
+/**
+ * Middleware function that runs before the request is processed
+ * Handles authentication and route protection using Supabase auth
+ * 
+ * @param request - The incoming request
+ * @returns NextResponse object
+ */
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ 
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET
-  });
+  // Create a Supabase client for the middleware
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req: request, res });
   
+  // Get the current user's session
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Check if the requested path is an auth page (login or signup)
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
                     request.nextUrl.pathname.startsWith('/signup');
 
-  if (isAuthPage) {
-    if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return NextResponse.next();
+  // If on an auth page and already logged in, redirect to dashboard
+  if (isAuthPage && session) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   // Protected routes check
@@ -24,11 +32,12 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   );
   
-  if (isProtectedRoute && !token) {
+  // If trying to access a protected route without a session, redirect to login
+  if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {

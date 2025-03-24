@@ -3,27 +3,29 @@
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from './theme';
-import { SessionProvider } from 'next-auth/react';
-import { Session } from 'next-auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { UserProvider } from '@/contexts/UserContext';
 
+// Create a client for React Query
 const queryClient = new QueryClient();
 
+/**
+ * Providers component wrapping the application with all necessary context providers
+ * Now uses Supabase auth via UserProvider instead of NextAuth SessionProvider
+ */
 export function Providers({ 
-  children,
-  session 
+  children 
 }: { 
   children: React.ReactNode;
-  session: Session | null;
 }) {
   return (
-    <SessionProvider session={session}>
+    <UserProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
           {children}
         </ThemeProvider>
       </QueryClientProvider>
-    </SessionProvider>
+    </UserProvider>
   );
 } 

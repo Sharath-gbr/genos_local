@@ -1,11 +1,14 @@
 import { airtableBase } from '@/lib/airtable';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    // Create Supabase server client
+    const supabase = createServerClient();
+    
+    // Get user session using Supabase
+    const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
       return NextResponse.json(

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { useUser } from '@/contexts/UserContext';
 import { 
   Typography, 
   TextField,
@@ -89,8 +89,11 @@ const nutritionalPresets = {
 async function fetchRecipes(): Promise<Recipe[]> {
   try {
     console.log('Fetching recipes from API...');
-    // Update to the correct endpoint that exists in the app
-    const response = await fetch('/api/recipes');
+    
+    // Add credentials to ensure the auth cookie is sent
+    const response = await fetch('/api/recipes', {
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -567,7 +570,7 @@ const NutritionalFilter = dynamic(
 
 // Component definition
 export default function PlatePlanner() {
-  const { status } = useSession();
+  const { user, loading } = useUser();
   const [mounted, setMounted] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [dietFilter, setDietFilter] = useState('all');
@@ -582,6 +585,11 @@ export default function PlatePlanner() {
   const [nutritionalRange, setNutritionalRange] = useState<NutritionalRange>(nutritionalPresets.default);
   const [isNutritionalFilterActive, setIsNutritionalFilterActive] = useState(false);
 
+  // Replace any checks for session status
+  const isAuthenticated = !!user && !loading;
+  
+  // Use this value anywhere the component checked the session status
+  
   // Create a debounced search function
   const debouncedSearch = debounce((query: string, recipes: Recipe[]) => {
     if (!query.trim()) {
@@ -607,7 +615,7 @@ export default function PlatePlanner() {
   const { data: recipes = [], isLoading, error } = useQuery<Recipe[]>({
     queryKey: ['recipes'],
     queryFn: fetchRecipes,
-    enabled: status === 'authenticated' && mounted,
+    enabled: isAuthenticated && mounted,
     retry: 3, // Retry up to 3 times in case of network errors
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
     onError: (err) => console.error('Error fetching recipes:', err)

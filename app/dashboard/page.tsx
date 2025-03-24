@@ -1,7 +1,6 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Container,
@@ -17,6 +16,7 @@ import {
 import { styled } from '@mui/material/styles';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { UserCircleIcon, ClipboardDocumentListIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { useUser } from '@/contexts/UserContext';
 
 const DashboardContainer = styled(Container)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -138,31 +138,36 @@ const SignOutButton = styled(Button)(({ theme }) => ({
 }));
 
 export default function Dashboard() {
-  const { data: session, status } = useSession();
+  const { user, loading, signOut } = useUser();
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
+    if (!loading && !user) {
+      router.push('/login');
     }
-  }, [status, router]);
+    
+    // Get user's name from metadata if available
+    if (user && user.user_metadata) {
+      const firstName = user.user_metadata.first_name || '';
+      setUserName(firstName);
+    }
+  }, [user, loading, router]);
 
   const handleSignOut = async () => {
     try {
-      await signOut({ 
-        redirect: true,
-        callbackUrl: '/'
-      });
+      await signOut();
+      // The router.push is handled in the signOut function from UserContext
     } catch (error) {
       console.error('Sign out error:', error);
       // Fallback navigation if signOut fails
-      router.push('/');
+      router.push('/login');
     }
   };
 
-  if (status === 'loading') {
+  if (loading) {
     return <LoadingSpinner />;
   }
 
@@ -178,10 +183,10 @@ export default function Dashboard() {
 
       <WelcomeSection>
         <WelcomeText>
-          Welcome
+          {userName ? `Welcome, ${userName}` : 'Welcome'}
         </WelcomeText>
         <SubText>
-          {/* Logged in email hidden as requested */}
+          {/* User email hidden for privacy */}
         </SubText>
 
         <Grid container spacing={isMobile ? 2 : 3}>
