@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { Box } from '@mui/material';
-import { useSession } from 'next-auth/react';
+import { useCompatSession } from '@/lib/migrationHelper';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -49,7 +49,7 @@ const EnergyLevelsWidget = dynamic(
 
 export default function IntakeAssessmentsContent() {
   console.log('Rendering IntakeAssessmentsContent');
-  const { data: session, status } = useSession();
+  const { data: session, status } = useCompatSession();
   const router = useRouter();
 
   useEffect(() => {
