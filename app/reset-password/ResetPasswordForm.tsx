@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Box, Button, TextField, Alert, CircularProgress } from '@mui/material';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export function ResetPasswordForm() {
+function ResetPasswordFormContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -133,5 +133,14 @@ export function ResetPasswordForm() {
         Back to Login
       </Button>
     </Box>
+  );
+}
+
+// Wrap the form in a Suspense boundary to fix the deployment error with useSearchParams
+export function ResetPasswordForm() {
+  return (
+    <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>}>
+      <ResetPasswordFormContent />
+    </Suspense>
   );
 } 
