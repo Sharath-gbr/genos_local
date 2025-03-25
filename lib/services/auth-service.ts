@@ -21,6 +21,9 @@ export const AuthService = {
       // In production, this should use proper email verification
       const emailConfirmation = process.env.NODE_ENV === 'development' ? false : true;
       
+      // Get the app URL from environment variable, fallback to window.location.origin
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      
       // Register the user with Supabase Auth, including first and last name in user metadata
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -31,7 +34,7 @@ export const AuthService = {
             last_name: lastName,
             full_name: `${firstName} ${lastName}`
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${appUrl}/auth/callback`,
           // For development, disable email confirmation
           emailConfirm: emailConfirmation
         },
