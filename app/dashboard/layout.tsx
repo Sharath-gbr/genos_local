@@ -140,7 +140,7 @@ const Overlay = styled('div')(({ theme }) => ({
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Plate Planner', href: '/dashboard/plate-planner', icon: ClipboardDocumentListIcon },
-  { name: 'Food Sensitivity Hub', href: '/dashboard/nutrient-nexus', icon: ChartBarIcon },
+  { name: 'Food and Sensitivity Hub', href: '/dashboard/food-sensitivity-hub', icon: ChartBarIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: UserCircleIcon },
 ]
 
