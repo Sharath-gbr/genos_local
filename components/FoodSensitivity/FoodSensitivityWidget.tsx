@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, CircularProgress, Alert, Button } from '@mui/material';
 import { createClient } from '@/lib/supabase/client';
 
-interface ToleranceData {
+interface WeightLogData {
   id?: string;
+  Email?: string;
+  email?: string;
   "Food Item Introduced (Genos)"?: string;
   "Supplement Introduced"?: string;
   "Tolerant Food Items"?: string;
@@ -14,11 +16,12 @@ interface ToleranceData {
 
 export default function FoodSensitivityWidget() {
   const [userData, setUserData] = useState<{ firstName: string; lastName: string; email: string } | null>(null);
-  const [toleranceData, setToleranceData] = useState<ToleranceData[]>([]);
+  const [toleranceData, setToleranceData] = useState<WeightLogData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [debugMode, setDebugMode] = useState<boolean>(false);
+  const [rawData, setRawData] = useState<any[] | null>(null);
   const supabase = createClient();
   
   // Fetch the user's data from Supabase auth
@@ -64,28 +67,32 @@ export default function FoodSensitivityWidget() {
     try {
       console.log('Fetching available tables...');
       
-      // Query the information_schema to get table names
+      // Query for tables in the public schema
       const { data, error } = await supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public');
+        .from('weight_logs')
+        .select('*')
+        .limit(1);
         
       if (error) {
-        console.error('Error fetching tables:', error);
+        console.error('Error accessing weight_logs table:', error);
+        setAvailableTables(['Error accessing weight_logs: ' + error.message]);
         return;
       }
       
-      if (data) {
-        const tableNames = data.map(row => row.table_name);
-        console.log('Available tables:', tableNames);
-        setAvailableTables(tableNames);
+      // If we got here, weight_logs exists
+      setAvailableTables(['weight_logs']);
+      
+      // List first few columns to help debugging
+      if (data && data.length > 0) {
+        console.log('Sample weight_logs columns:', Object.keys(data[0]).join(', '));
       }
     } catch (err) {
       console.error('Error in fetchAvailableTables:', err);
+      setAvailableTables(['Error checking tables: ' + (err instanceof Error ? err.message : String(err))]);
     }
   };
 
-  // Fetch tolerance data when user is authenticated
+  // Fetch food sensitivity data from weight_logs table
   useEffect(() => {
     const fetchToleranceData = async () => {
       if (!userData?.email) return;
@@ -94,74 +101,51 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Attempting to fetch tolerance data for email:', userData.email);
         
-        // Try multiple possible table names
-        const possibleTables = [
-          'food_sensitivity', 
-          'food_sensitivities', 
-          'tolerance', 
-          'tolerances',
-          'genos_sensitivity',
-          'sensitivity',
-          'sensitivities',
-          'user_sensitivities',
-          'food_tolerance'
+        // Try to query the weight_logs table
+        const { data, error } = await supabase
+          .from('weight_logs')
+          .select('*');
+          
+        if (error) {
+          console.error('Error querying weight_logs:', error);
+          throw new Error(`Error accessing weight_logs: ${error.message}`);
+        }
+        
+        // Store the raw data for debugging
+        setRawData(data);
+        console.log('Raw weight_logs data:', data);
+        
+        if (!data || data.length === 0) {
+          throw new Error('No data found in weight_logs table');
+        }
+        
+        // Process the data to extract tolerance information
+        // Look for relevant columns in the data (may be different per row)
+        const toleranceFields = [
+          "Food Item Introduced (Genos)", 
+          "Supplement Introduced", 
+          "Tolerant Food Items",
+          "Food_Item_Introduced", 
+          "Supplement_Introduced", 
+          "Tolerant_Food_Items"
         ];
         
-        // Try each table name
-        let foundData = false;
+        // Check if any rows have tolerance data
+        const relevantData = data.filter(row => {
+          return toleranceFields.some(field => 
+            row[field] !== undefined && row[field] !== null && row[field] !== ''
+          );
+        });
         
-        for (const tableName of possibleTables) {
-          console.log(`Trying table: ${tableName}`);
-          
-          try {
-            const { data, error } = await supabase
-              .from(tableName)
-              .select('*');
-              
-            if (error) {
-              console.log(`Error with table ${tableName}:`, error.message);
-              continue;
-            }
-            
-            console.log(`Data from ${tableName}:`, data);
-            
-            if (data && data.length > 0) {
-              foundData = true;
-              setToleranceData(data);
-              break;
-            }
-          } catch (tableError) {
-            console.log(`Exception with table ${tableName}:`, tableError);
-          }
-        }
-        
-        if (!foundData) {
-          // Try to fetch from a hardcoded table as a fallback
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', userData.email);
-            
-          if (error) {
-            console.error('Fallback query error:', error);
-            throw new Error('Could not find any food sensitivity data tables');
-          }
-          
-          if (data && data.length > 0) {
-            console.log('Found user data as fallback:', data);
-            // Just use whatever data we found to avoid errors
-            setToleranceData(data.map(item => ({
-              "Food Item Introduced (Genos)": "Sample food (placeholder)",
-              "Supplement Introduced": "Sample supplement (placeholder)",
-              "Tolerant Food Items": "Sample tolerance (placeholder)",
-              ...item
-            })));
-          } else {
-            throw new Error('No data found in any tables');
-          }
+        if (relevantData.length > 0) {
+          console.log('Found tolerance data in weight_logs:', relevantData);
+          setToleranceData(relevantData);
+        } else {
+          // If no specific tolerance fields, just use all non-empty data
+          setToleranceData(data);
         }
       } catch (err) {
-        console.error('Error fetching tolerance data:', err);
+        console.error('Error fetching data from weight_logs:', err);
         setError(`Failed to fetch your food sensitivity data: ${err instanceof Error ? err.message : 'Unknown error'}`);
         
         // When error occurs, try to fetch available tables to help debugging
@@ -221,6 +205,20 @@ export default function FoodSensitivityWidget() {
               User Email:
             </Typography>
             <Typography>{userData?.email || 'Not logged in'}</Typography>
+            
+            {rawData && (
+              <>
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
+                  Raw Data (first record):
+                </Typography>
+                <Box sx={{ overflowX: 'auto' }}>
+                  <pre>{JSON.stringify(rawData[0], null, 2)}</pre>
+                </Box>
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                  Available Columns: {rawData[0] ? Object.keys(rawData[0]).join(', ') : 'None'}
+                </Typography>
+              </>
+            )}
           </Box>
         )}
       </Box>
@@ -261,34 +259,22 @@ export default function FoodSensitivityWidget() {
       {/* Tolerances Section */}
       <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle1" sx={{ mb: 2, color: '#FF5F1F' }}>
-          Tolerances
+          Weight Logs & Tolerance Data
         </Typography>
         
         {toleranceData.map((item, index) => (
           <Box key={index} sx={{ mb: 2, p: 2, borderRadius: 1, bgcolor: 'rgba(255, 255, 255, 0.05)' }}>
             {Object.entries(item).map(([key, value]) => {
               // Skip null/undefined values and internal fields
-              if (value === null || value === undefined || key === 'id' || key === 'email' || key === 'Email') return null;
+              if (value === null || value === undefined || 
+                  key === 'id' || 
+                  (key === 'email' || key === 'Email') && value === userData.email) 
+                return null;
               
-              // Display special fields in a formatted way if they exist
-              if (key === "Food Item Introduced (Genos)" || key === "Supplement Introduced" || key === "Tolerant Food Items") {
-                return (
-                  <Box key={key} sx={{ display: 'flex', mb: 1 }}>
-                    <Typography sx={{ fontWeight: 500, minWidth: '200px', color: '#FF5F1F' }}>
-                      {key.replace(/\(Genos\)/g, '')}:
-                    </Typography>
-                    <Typography>
-                      {String(value)}
-                    </Typography>
-                  </Box>
-                );
-              }
-              
-              // Optional: show other fields too
               return (
                 <Box key={key} sx={{ display: 'flex', mb: 1 }}>
                   <Typography sx={{ fontWeight: 500, minWidth: '200px', color: '#FF5F1F' }}>
-                    {key}:
+                    {key.replace(/[_-]/g, ' ').replace(/\(Genos\)/g, '')}:
                   </Typography>
                   <Typography>
                     {typeof value === 'object' ? JSON.stringify(value) : String(value)}
@@ -315,22 +301,25 @@ export default function FoodSensitivityWidget() {
       {debugMode && (
         <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1, fontSize: '0.8rem' }}>
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-            Available Tables:
+            Table Being Used:
           </Typography>
-          {availableTables.length > 0 ? (
-            <ul>
-              {availableTables.map((table, i) => (
-                <li key={i}>{table}</li>
-              ))}
-            </ul>
-          ) : (
-            <Typography>No tables found or permission denied</Typography>
-          )}
+          <Typography>weight_logs</Typography>
+          
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
-            Raw Data:
+            User Email:
+          </Typography>
+          <Typography>{userData.email}</Typography>
+          
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
+            Record Count:
+          </Typography>
+          <Typography>{toleranceData.length} records found</Typography>
+          
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
+            Sample Data (First Record):
           </Typography>
           <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
-            {JSON.stringify(toleranceData, null, 2)}
+            {JSON.stringify(toleranceData[0], null, 2)}
           </pre>
         </Box>
       )}
