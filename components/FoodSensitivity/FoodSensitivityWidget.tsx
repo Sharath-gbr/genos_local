@@ -125,56 +125,45 @@ export default function FoodSensitivityWidget() {
       Array.from(new Set(data.flatMap(item => Object.keys(item)))).join(', '));
 
     data.forEach(item => {
-      // Check multiple fields that could indicate tolerance status
-      const tolerantStatus = item["Tolerant/Intolerant"] || '';
-      const isTolerant = tolerantStatus.toLowerCase().includes('tolerant') && 
-                        !tolerantStatus.toLowerCase().includes('intolerant');
+      // Enhanced debugging - log every item for inspection
+      console.log('Raw item data:', item);
       
-      // Log the item for debugging
-      console.log('Processing item:', {
-        tolerantStatus,
-        isTolerant,
-        supplements: item["Supplement Introduced"],
-        tolerantFoods: item["Tolerant Food Items"],
-        intolerantFoods: item["Intolerant Food Items"],
-        foodItem: item["Food Item Introduced (Genos)"]
-      });
-      
-      // Process supplements - check all possible field names
+      // Process supplements first
       if (item["Supplement Introduced"]) {
-        const supplements = item["Supplement Introduced"].split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
-        
-        // Categorize by the tolerant status
-        if (isTolerant) {
-          result.tolerant.supplements.push(...supplements);
-        } else if (tolerantStatus.toLowerCase().includes('intolerant')) {
-          result.intolerant.supplements.push(...supplements);
-        } else {
-          // If status is unclear, default to tolerant
-          result.tolerant.supplements.push(...supplements);
+        const supplement = item["Supplement Introduced"].trim();
+        if (supplement) {
+          // If we have a Tolerant/Intolerant value for this row, use it
+          const toleranceStatus = item["Tolerant/Intolerant"]?.trim();
+          
+          if (toleranceStatus === "Tolerant") {
+            result.tolerant.supplements.push(supplement);
+          } else if (toleranceStatus === "Intolerant") {
+            result.intolerant.supplements.push(supplement);
+          } else {
+            // If no tolerance status, default to tolerant
+            result.tolerant.supplements.push(supplement);
+          }
         }
       }
       
-      // Also check additional fields that might contain supplement info
-      const additionalSupplementFields = ["Supplement", "supplements", "supplement introduced"];
-      additionalSupplementFields.forEach(field => {
-        if (item[field]) {
-          const supplements = item[field].split(',')
-            .map(s => s.trim())
-            .filter(Boolean);
+      // Process foods - directly look at Food Item Introduced with the associated tolerance status
+      if (item["Food Item Introduced (Genos)"]) {
+        const food = item["Food Item Introduced (Genos)"].trim();
+        if (food) {
+          // Check the same row's Tolerant/Intolerant value 
+          const toleranceStatus = item["Tolerant/Intolerant"]?.trim();
           
-          if (isTolerant || !tolerantStatus) {
-            result.tolerant.supplements.push(...supplements);
-          } else {
-            result.intolerant.supplements.push(...supplements);
+          if (toleranceStatus === "Tolerant") {
+            // Add to tolerant foods if marked as Tolerant
+            result.tolerant.foods.push(food);
+          } else if (toleranceStatus === "Intolerant") {
+            // Add to intolerant foods if marked as Intolerant
+            result.intolerant.foods.push(food);
           }
         }
-      });
+      }
       
-      // Process foods - handle each field explicitly
-      // Tolerant foods
+      // Check for specific tolerant food fields
       if (item["Tolerant Food Items"]) {
         const foods = item["Tolerant Food Items"]
           .split(',')
@@ -183,7 +172,7 @@ export default function FoodSensitivityWidget() {
         result.tolerant.foods.push(...foods);
       }
       
-      // Intolerant foods
+      // Check for specific intolerant food fields
       if (item["Intolerant Food Items"]) {
         const foods = item["Intolerant Food Items"]
           .split(',')
@@ -192,22 +181,7 @@ export default function FoodSensitivityWidget() {
         result.intolerant.foods.push(...foods);
       }
       
-      // Food Item Introduced - categorize based on tolerance status
-      if (item["Food Item Introduced (Genos)"]) {
-        const foods = item["Food Item Introduced (Genos)"]
-          .split(',')
-          .map(f => f.trim())
-          .filter(Boolean);
-        
-        if (isTolerant) {
-          result.tolerant.foods.push(...foods);
-        } else if (tolerantStatus.toLowerCase().includes('intolerant')) {
-          result.intolerant.foods.push(...foods);
-        }
-        // If status is unclear, don't categorize the food
-      }
-      
-      // Additional checks for specific field names in your data structure
+      // Also check direct tolerant/intolerant fields if present
       if (item["Tolerant"]) {
         const tolerantItems = String(item["Tolerant"])
           .split(',')
@@ -230,6 +204,9 @@ export default function FoodSensitivityWidget() {
     result.tolerant.foods = [...new Set(result.tolerant.foods)].filter(Boolean);
     result.intolerant.supplements = [...new Set(result.intolerant.supplements)].filter(Boolean);
     result.intolerant.foods = [...new Set(result.intolerant.foods)].filter(Boolean);
+    
+    // Log the processed data for verification
+    console.log('Processed data:', result);
     
     return result;
   };
