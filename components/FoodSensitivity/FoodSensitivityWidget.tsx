@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, CircularProgress, Alert, Button, Grid } from '@mui/material';
 import { createClient } from '@/lib/supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 interface WeightLogData {
   id?: string;
@@ -16,26 +17,33 @@ interface WeightLogData {
   [key: string]: any;
 }
 
-interface ToleranceData {
+interface CategoryData {
   supplements: string[];
   foods: string[];
 }
 
+interface ToleranceData {
+  tolerant: CategoryData;
+  intolerant: CategoryData;
+}
+
 export default function FoodSensitivityWidget() {
   const [userData, setUserData] = useState<{ firstName: string; lastName: string; email: string } | null>(null);
-  const [toleranceData, setToleranceData] = useState<WeightLogData[]>([]);
+  const [toleranceData, setToleranceData] = useState<ToleranceData>({
+    tolerant: {
+      supplements: [],
+      foods: []
+    },
+    intolerant: {
+      supplements: [],
+      foods: []
+    }
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [debugMode, setDebugMode] = useState<boolean>(false);
   const [rawData, setRawData] = useState<any[] | null>(null);
-  const [processedData, setProcessedData] = useState<{
-    tolerant: ToleranceData;
-    intolerant: ToleranceData;
-  }>({
-    tolerant: { supplements: [], foods: [] },
-    intolerant: { supplements: [], foods: [] }
-  });
   
   const supabase = createClient();
   
@@ -108,121 +116,70 @@ export default function FoodSensitivityWidget() {
   };
 
   // Process data into categorized format
-  const processToleranceData = (data: WeightLogData[]) => {
-    const result = {
+  const processToleranceData = (data: any[]): ToleranceData => {
+    const result: ToleranceData = {
       tolerant: {
-        supplements: [] as string[],
-        foods: [] as string[]
+        supplements: [],
+        foods: []
       },
       intolerant: {
-        supplements: [] as string[],
-        foods: [] as string[]
+        supplements: [],
+        foods: []
       }
     };
 
-    // Log total number of rows to help with debugging
-    console.log(`Processing ${data.length} total data rows`);
+    // Log the raw data for debugging
+    console.log('Processing raw data:', data);
 
     data.forEach((item, index) => {
-      console.log(`Processing row ${index + 1}/${data.length}:`, item);
-      
-      // Check tolerance status with more flexible matching
-      const toleranceStatus = item["Tolerant/Intolerant"]?.trim() || '';
-      const isTolerant = toleranceStatus.toLowerCase().includes('tolerant') && 
-                         !toleranceStatus.toLowerCase().includes('intolerant');
-      const isIntolerant = toleranceStatus.toLowerCase().includes('intolerant');
-      
-      // Process supplements
-      if (item["Supplement Introduced"]) {
-        const supplement = item["Supplement Introduced"].trim();
-        if (supplement) {
-          if (isTolerant) {
-            result.tolerant.supplements.push(supplement);
-          } else if (isIntolerant) {
-            result.intolerant.supplements.push(supplement);
-          } else {
-            // Default case
-            result.tolerant.supplements.push(supplement);
-          }
+      // Ensure we have valid data
+      if (!item || !item.type || !item.introduction || !item.sensitivity) {
+        console.log(`Skipping invalid item at index ${index}:`, item);
+        return;
+      }
+
+      const type = item.type;
+      const introduction = item.introduction.trim();
+      const sensitivity = item.sensitivity.trim();
+
+      console.log(`Processing item ${index + 1}:`, { type, introduction, sensitivity });
+
+      // Skip empty introductions
+      if (!introduction) {
+        return;
+      }
+
+      // Determine which array to add to based on type and sensitivity
+      if (sensitivity.toLowerCase() === 'tolerant') {
+        if (type.toLowerCase() === 'supplement') {
+          result.tolerant.supplements.push(introduction);
+        } else if (type.toLowerCase() === 'food') {
+          result.tolerant.foods.push(introduction);
         }
-      }
-      
-      // Process food items with more flexible matching
-      if (item["Food Item Introduced (Genos)"]) {
-        const food = item["Food Item Introduced (Genos)"].trim();
-        if (food) {
-          console.log(`Found food: "${food}" with tolerance status: "${toleranceStatus}"`);
-          
-          // If the row has a clear tolerance status, use it
-          if (isTolerant) {
-            console.log(`Adding "${food}" to tolerant foods`);
-            result.tolerant.foods.push(food);
-          } else if (isIntolerant) {
-            console.log(`Adding "${food}" to intolerant foods`);
-            result.intolerant.foods.push(food);
-          } else if (toleranceStatus.trim() === '') {
-            // If no tolerance status and it's a food item, check if we should default it
-            // For now, defaulting to tolerant if no status provided
-            console.log(`No tolerance status for "${food}", defaulting to tolerant`);
-            result.tolerant.foods.push(food);
-          }
-        }
-      }
-      
-      // Check for specific tolerant/intolerant food fields
-      if (item["Tolerant Food Items"]) {
-        const foods = item["Tolerant Food Items"]
-          .split(',')
-          .map(f => f.trim())
-          .filter(Boolean);
-        result.tolerant.foods.push(...foods);
-      }
-      
-      if (item["Intolerant Food Items"]) {
-        const foods = item["Intolerant Food Items"]
-          .split(',')
-          .map(f => f.trim())
-          .filter(Boolean);
-        result.intolerant.foods.push(...foods);
-      }
-      
-      // Check for tolerance status in other fields
-      if (item["Tolerant"] || 
-          (typeof item["tolerant"] === 'string' && item["tolerant"])) {
-        const tolerantVal = item["Tolerant"] || item["tolerant"] || '';
-        if (typeof tolerantVal === 'string' && tolerantVal.trim()) {
-          const tolerantItems = tolerantVal
-            .split(',')
-            .map(f => f.trim())
-            .filter(Boolean);
-          result.tolerant.foods.push(...tolerantItems);
-        }
-      }
-      
-      if (item["Intolerant"] || 
-          (typeof item["intolerant"] === 'string' && item["intolerant"])) {
-        const intolerantVal = item["Intolerant"] || item["intolerant"] || '';
-        if (typeof intolerantVal === 'string' && intolerantVal.trim()) {
-          const intolerantItems = intolerantVal
-            .split(',')
-            .map(f => f.trim())
-            .filter(Boolean);
-          result.intolerant.foods.push(...intolerantItems);
+      } else if (sensitivity.toLowerCase() === 'intolerant') {
+        if (type.toLowerCase() === 'supplement') {
+          result.intolerant.supplements.push(introduction);
+        } else if (type.toLowerCase() === 'food') {
+          result.intolerant.foods.push(introduction);
         }
       }
     });
-    
-    // Remove duplicates and make sure empty elements are removed
-    result.tolerant.supplements = [...new Set(result.tolerant.supplements)].filter(Boolean);
-    result.tolerant.foods = [...new Set(result.tolerant.foods)].filter(Boolean);
-    result.intolerant.supplements = [...new Set(result.intolerant.supplements)].filter(Boolean);
-    result.intolerant.foods = [...new Set(result.intolerant.foods)].filter(Boolean);
-    
-    // Log the processed data for verification
-    console.log('Processed data:', result);
-    console.log('Tolerant foods count:', result.tolerant.foods.length);
-    console.log('Intolerant foods count:', result.intolerant.foods.length);
-    
+
+    // Remove duplicates and sort alphabetically
+    result.tolerant.supplements = [...new Set(result.tolerant.supplements)].sort();
+    result.tolerant.foods = [...new Set(result.tolerant.foods)].sort();
+    result.intolerant.supplements = [...new Set(result.intolerant.supplements)].sort();
+    result.intolerant.foods = [...new Set(result.intolerant.foods)].sort();
+
+    // Log the processed results
+    console.log('Processed tolerance data:', result);
+    console.log('Counts:', {
+      tolerantSupplements: result.tolerant.supplements.length,
+      tolerantFoods: result.tolerant.foods.length,
+      intolerantSupplements: result.intolerant.supplements.length,
+      intolerantFoods: result.intolerant.foods.length
+    });
+
     return result;
   };
 
@@ -235,29 +192,52 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Attempting to fetch tolerance data for email:', userData.email);
         
-        // Try to query the weight_logs table
-        const { data, error } = await supabase
-          .from('weight_logs')
-          .select('*');
-          
+        // Update the data fetching query to match the SQL structure
+        const query = `
+          with suplements as (
+            select 'Supplement' as type, "Supplement Introduced" as introduction, "Tolerant/Intolerant" as sensitivity
+            from public.weight_logs
+            where "Email" = '${userData.email}'
+            and length("Tolerant/Intolerant") > 1
+            and length("Supplement Introduced") > 1
+          ),
+          food as (
+            select 'Food' as type, "Food Item Introduced (Genos)" as introduction, "Tolerant/Intolerant" as sensitivity
+            from public.weight_logs
+            where "Email" = '${userData.email}'
+            and length("Tolerant/Intolerant") > 1
+            and length("Food Item Introduced (Genos)") > 1
+          ),
+          combined as (
+            select * from suplements
+            union
+            select * from food
+          )
+          select *
+          from combined
+          order by type, sensitivity;
+        `;
+
+        const { data, error } = await supabase.rpc('execute_query', { query_text: query });
+
         if (error) {
-          console.error('Error querying weight_logs:', error);
-          throw new Error(`Error accessing weight_logs: ${error.message}`);
+          console.error('Error fetching tolerance data:', error);
+          throw new Error('Failed to fetch your food sensitivity data: ' + error.message);
         }
+
+        if (!data || data.length === 0) {
+          console.log('No tolerance data found');
+          throw new Error('No food sensitivity data found for your account');
+        }
+
+        console.log('Raw query results:', data);
         
         // Store the raw data for debugging
         setRawData(data);
-        console.log('Raw weight_logs data:', data);
-        
-        if (!data || data.length === 0) {
-          throw new Error('No data found in weight_logs table');
-        }
-        
-        setToleranceData(data);
         
         // Process the data into the categorized format
         const processed = processToleranceData(data);
-        setProcessedData(processed);
+        setToleranceData(processed);
         console.log('Processed tolerance data:', processed);
         
       } catch (err) {
@@ -349,15 +329,13 @@ export default function FoodSensitivityWidget() {
     );
   }
 
-  if (toleranceData.length === 0) {
+  if (Object.values(toleranceData).every(category => category.supplements.length === 0 && category.foods.length === 0)) {
     return (
       <Alert severity="info" sx={{ mb: 3 }}>
         No tolerance data found for {userData.firstName || ''} {userData.lastName || ''}. Please ensure your data is properly entered in the system.
       </Alert>
     );
   }
-  
-  const { tolerant, intolerant } = processedData;
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -387,9 +365,9 @@ export default function FoodSensitivityWidget() {
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               Supplements
             </Typography>
-            {tolerant.supplements.length > 0 ? (
+            {toleranceData.tolerant.supplements.length > 0 ? (
               <Box sx={{ mb: 3, pl: 2 }}>
-                {tolerant.supplements.map((supplement, idx) => (
+                {toleranceData.tolerant.supplements.map((supplement, idx) => (
                   <Typography key={idx} sx={{ mb: 0.5 }}>
                     - {supplement}
                   </Typography>
@@ -405,9 +383,9 @@ export default function FoodSensitivityWidget() {
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               Foods
             </Typography>
-            {tolerant.foods.length > 0 ? (
+            {toleranceData.tolerant.foods.length > 0 ? (
               <Box sx={{ pl: 2 }}>
-                {tolerant.foods.map((food, idx) => (
+                {toleranceData.tolerant.foods.map((food, idx) => (
                   <Typography key={idx} sx={{ mb: 0.5 }}>
                     - {food}
                   </Typography>
@@ -442,9 +420,9 @@ export default function FoodSensitivityWidget() {
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               Supplements
             </Typography>
-            {intolerant.supplements.length > 0 ? (
+            {toleranceData.intolerant.supplements.length > 0 ? (
               <Box sx={{ mb: 3, pl: 2 }}>
-                {intolerant.supplements.map((supplement, idx) => (
+                {toleranceData.intolerant.supplements.map((supplement, idx) => (
                   <Typography key={idx} sx={{ mb: 0.5 }}>
                     - {supplement}
                   </Typography>
@@ -460,9 +438,9 @@ export default function FoodSensitivityWidget() {
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               Foods
             </Typography>
-            {intolerant.foods.length > 0 ? (
+            {toleranceData.intolerant.foods.length > 0 ? (
               <Box sx={{ pl: 2 }}>
-                {intolerant.foods.map((food, idx) => (
+                {toleranceData.intolerant.foods.map((food, idx) => (
                   <Typography key={idx} sx={{ mb: 0.5 }}>
                     - {food}
                   </Typography>
@@ -500,7 +478,7 @@ export default function FoodSensitivityWidget() {
             Processed Data:
           </Typography>
           <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
-            {JSON.stringify(processedData, null, 2)}
+            {JSON.stringify(toleranceData, null, 2)}
           </pre>
           
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
