@@ -136,7 +136,7 @@ export default function FoodSensitivityWidget() {
         // 1. Fetch tolerant supplements
         const { data: tolerantSupplements, error: tolerantSupplementsError } = await supabase
           .from('weight_logs')
-          .select('"Supplement Introduced", "Tolerant/Intolerant"')
+          .select('*')
           .eq('Email', userData.email)
           .eq('Tolerant/Intolerant', 'Tolerant')
           .not('Supplement Introduced', 'is', null)
@@ -150,7 +150,7 @@ export default function FoodSensitivityWidget() {
         // 2. Fetch tolerant foods
         const { data: tolerantFoods, error: tolerantFoodsError } = await supabase
           .from('weight_logs')
-          .select('"Food Item Introduced (Genos)", "Tolerant/Intolerant"')
+          .select('*')
           .eq('Email', userData.email)
           .eq('Tolerant/Intolerant', 'Tolerant')
           .not('Food Item Introduced (Genos)', 'is', null)
@@ -164,7 +164,7 @@ export default function FoodSensitivityWidget() {
         // 3. Fetch intolerant supplements
         const { data: intolerantSupplements, error: intolerantSupplementsError } = await supabase
           .from('weight_logs')
-          .select('"Supplement Introduced", "Tolerant/Intolerant"')
+          .select('*')
           .eq('Email', userData.email)
           .eq('Tolerant/Intolerant', 'Intolerant')
           .not('Supplement Introduced', 'is', null)
@@ -178,7 +178,7 @@ export default function FoodSensitivityWidget() {
         // 4. Fetch intolerant foods
         const { data: intolerantFoods, error: intolerantFoodsError } = await supabase
           .from('weight_logs')
-          .select('"Food Item Introduced (Genos)", "Tolerant/Intolerant"')
+          .select('*')
           .eq('Email', userData.email)
           .eq('Tolerant/Intolerant', 'Intolerant')
           .not('Food Item Introduced (Genos)', 'is', null)
