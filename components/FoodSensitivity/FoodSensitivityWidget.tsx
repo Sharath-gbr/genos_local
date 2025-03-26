@@ -199,75 +199,55 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Attempting to fetch tolerance data for email:', userData.email);
         
-        // Fetch supplements
-        const { data: supplementsData, error: supplementsError } = await supabase
+        // Fetch all relevant data in one query
+        const { data, error } = await supabase
           .from('weight_logs')
-          .select(`
-            "Email",
-            "Supplement Introduced",
-            "Tolerant/Intolerant"
-          `)
-          .eq('Email', userData.email)
-          .not('Supplement Introduced', 'is', null)
-          .gt('Supplement Introduced', '')
-          .not('Tolerant/Intolerant', 'is', null)
-          .gt('Tolerant/Intolerant', '');
+          .select('*')
+          .eq('Email', userData.email);
 
-        if (supplementsError) {
-          console.error('Error fetching supplements:', supplementsError);
-          throw new Error('Failed to fetch supplements: ' + supplementsError.message);
+        if (error) {
+          console.error('Error fetching data:', error);
+          throw new Error('Failed to fetch data: ' + error.message);
         }
 
-        // Fetch foods
-        const { data: foodsData, error: foodsError } = await supabase
-          .from('weight_logs')
-          .select(`
-            "Email",
-            "Food Item Introduced (Genos)",
-            "Tolerant/Intolerant"
-          `)
-          .eq('Email', userData.email)
-          .not('Food Item Introduced (Genos)', 'is', null)
-          .gt('Food Item Introduced (Genos)', '')
-          .not('Tolerant/Intolerant', 'is', null)
-          .gt('Tolerant/Intolerant', '');
+        console.log('Raw data from database:', data);
 
-        if (foodsError) {
-          console.error('Error fetching foods:', foodsError);
-          throw new Error('Failed to fetch foods: ' + foodsError.message);
+        if (!data || data.length === 0) {
+          console.log('No data found');
+          throw new Error('No food sensitivity data found for your account');
         }
 
-        // Log raw data for debugging
-        console.log('Raw supplements data:', supplementsData);
-        console.log('Raw foods data:', foodsData);
+        // Transform the data into the required format
+        const combinedData = [];
 
-        // Combine the data
-        const combinedData = [
-          ...(supplementsData || [])
-            .filter(item => item["Supplement Introduced"] && item["Tolerant/Intolerant"])
-            .map(item => ({
+        // Process supplements
+        data.forEach(item => {
+          if (item["Supplement Introduced"] && item["Tolerant/Intolerant"]) {
+            combinedData.push({
               type: 'Supplement',
               introduction: item["Supplement Introduced"],
               sensitivity: item["Tolerant/Intolerant"]
-            })),
-          ...(foodsData || [])
-            .filter(item => item["Food Item Introduced (Genos)"] && item["Tolerant/Intolerant"])
-            .map(item => ({
+            });
+          }
+          
+          if (item["Food Item Introduced (Genos)"] && item["Tolerant/Intolerant"]) {
+            combinedData.push({
               type: 'Food',
               introduction: item["Food Item Introduced (Genos)"],
               sensitivity: item["Tolerant/Intolerant"]
-            }))
-        ];
+            });
+          }
+        });
 
         console.log('Combined data:', combinedData);
         
-        if (!combinedData || combinedData.length === 0) {
-          console.log('No tolerance data found');
+        if (combinedData.length === 0) {
+          console.log('No tolerance data found after processing');
           throw new Error('No food sensitivity data found for your account');
         }
 
         // Store the raw data for debugging
-        setRawData(combinedData);
+        setRawData(data);
         
         // Process the data into the categorized format
         const processed = processToleranceData(combinedData);
