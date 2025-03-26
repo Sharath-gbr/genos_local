@@ -130,6 +130,7 @@ export default function FoodSensitivityWidget() {
 
     // Log the raw data for debugging
     console.log('Processing raw data:', data);
+    console.log('Total items to process:', data.length);
 
     data.forEach((item, index) => {
       // Ensure we have valid data
@@ -138,7 +139,7 @@ export default function FoodSensitivityWidget() {
         return;
       }
 
-      const type = item.type;
+      const type = item.type.trim();
       const introduction = item.introduction.trim();
       const sensitivity = item.sensitivity.trim();
 
@@ -149,19 +150,25 @@ export default function FoodSensitivityWidget() {
         return;
       }
 
-      // Determine which array to add to based on type and sensitivity
-      if (sensitivity.toLowerCase() === 'tolerant') {
-        if (type.toLowerCase() === 'supplement') {
+      // Match exactly against "Tolerant" or "Intolerant"
+      if (sensitivity === "Tolerant") {
+        if (type === "Supplement") {
           result.tolerant.supplements.push(introduction);
-        } else if (type.toLowerCase() === 'food') {
+          console.log(`Added to tolerant supplements: ${introduction}`);
+        } else if (type === "Food") {
           result.tolerant.foods.push(introduction);
+          console.log(`Added to tolerant foods: ${introduction}`);
         }
-      } else if (sensitivity.toLowerCase() === 'intolerant') {
-        if (type.toLowerCase() === 'supplement') {
+      } else if (sensitivity === "Intolerant") {
+        if (type === "Supplement") {
           result.intolerant.supplements.push(introduction);
-        } else if (type.toLowerCase() === 'food') {
+          console.log(`Added to intolerant supplements: ${introduction}`);
+        } else if (type === "Food") {
           result.intolerant.foods.push(introduction);
+          console.log(`Added to intolerant foods: ${introduction}`);
         }
+      } else {
+        console.log(`Skipping item with unknown sensitivity: ${sensitivity}`);
       }
     });
 
@@ -194,28 +201,27 @@ export default function FoodSensitivityWidget() {
         
         // Update the data fetching query to match the SQL structure
         const query = `
-          with suplements as (
-            select 'Supplement' as type, "Supplement Introduced" as introduction, "Tolerant/Intolerant" as sensitivity
+          with combined_data as (
+            select 
+              CASE 
+                WHEN "Supplement Introduced" IS NOT NULL AND length("Supplement Introduced") > 0 THEN 'Supplement'
+                WHEN "Food Item Introduced (Genos)" IS NOT NULL AND length("Food Item Introduced (Genos)") > 0 THEN 'Food'
+              END as type,
+              COALESCE("Supplement Introduced", "Food Item Introduced (Genos)") as introduction,
+              "Tolerant/Intolerant" as sensitivity
             from public.weight_logs
             where "Email" = '${userData.email}'
-            and length("Tolerant/Intolerant") > 1
-            and length("Supplement Introduced") > 1
-          ),
-          food as (
-            select 'Food' as type, "Food Item Introduced (Genos)" as introduction, "Tolerant/Intolerant" as sensitivity
-            from public.weight_logs
-            where "Email" = '${userData.email}'
-            and length("Tolerant/Intolerant") > 1
-            and length("Food Item Introduced (Genos)") > 1
-          ),
-          combined as (
-            select * from suplements
-            union
-            select * from food
+            and (
+              ("Supplement Introduced" IS NOT NULL AND length("Supplement Introduced") > 0) OR
+              ("Food Item Introduced (Genos)" IS NOT NULL AND length("Food Item Introduced (Genos)") > 0)
+            )
+            and "Tolerant/Intolerant" IS NOT NULL
+            and length("Tolerant/Intolerant") > 0
           )
-          select *
-          from combined
-          order by type, sensitivity;
+          select distinct type, introduction, sensitivity
+          from combined_data
+          where introduction is not null
+          order by type, sensitivity, introduction;
         `;
 
         const { data, error } = await supabase.rpc('execute_query', { query_text: query });
