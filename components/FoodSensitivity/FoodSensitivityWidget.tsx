@@ -116,7 +116,7 @@ export default function FoodSensitivityWidget() {
   };
 
   // Process data into categorized format
-  const processToleranceData = (data: any[]): ToleranceData => {
+  const processToleranceData = (data: WeightLogData[]): ToleranceData => {
     const result: ToleranceData = {
       tolerant: {
         supplements: [],
@@ -133,42 +133,30 @@ export default function FoodSensitivityWidget() {
     console.log('Total items to process:', data.length);
 
     data.forEach((item, index) => {
-      // Ensure we have valid data
-      if (!item || !item.type || !item.introduction || !item.sensitivity) {
-        console.log(`Skipping invalid item at index ${index}:`, item);
-        return;
-      }
+      const toleranceStatus = item["Tolerant/Intolerant"]?.trim();
+      const supplement = item["Supplement Introduced"]?.trim();
+      const food = item["Food Item Introduced (Genos)"]?.trim();
 
-      const type = item.type.trim();
-      const introduction = item.introduction.trim();
-      const sensitivity = item.sensitivity.trim();
+      console.log(`Processing item ${index + 1}:`, { toleranceStatus, supplement, food });
 
-      console.log(`Processing item ${index + 1}:`, { type, introduction, sensitivity });
-
-      // Skip empty introductions
-      if (!introduction) {
-        return;
-      }
-
-      // Match exactly against "Tolerant" or "Intolerant"
-      if (sensitivity === "Tolerant") {
-        if (type === "Supplement") {
-          result.tolerant.supplements.push(introduction);
-          console.log(`Added to tolerant supplements: ${introduction}`);
-        } else if (type === "Food") {
-          result.tolerant.foods.push(introduction);
-          console.log(`Added to tolerant foods: ${introduction}`);
+      if (toleranceStatus === "Tolerant") {
+        if (supplement) {
+          result.tolerant.supplements.push(supplement);
+          console.log(`Added to tolerant supplements: ${supplement}`);
         }
-      } else if (sensitivity === "Intolerant") {
-        if (type === "Supplement") {
-          result.intolerant.supplements.push(introduction);
-          console.log(`Added to intolerant supplements: ${introduction}`);
-        } else if (type === "Food") {
-          result.intolerant.foods.push(introduction);
-          console.log(`Added to intolerant foods: ${introduction}`);
+        if (food) {
+          result.tolerant.foods.push(food);
+          console.log(`Added to tolerant foods: ${food}`);
         }
-      } else {
-        console.log(`Skipping item with unknown sensitivity: ${sensitivity}`);
+      } else if (toleranceStatus === "Intolerant") {
+        if (supplement) {
+          result.intolerant.supplements.push(supplement);
+          console.log(`Added to intolerant supplements: ${supplement}`);
+        }
+        if (food) {
+          result.intolerant.foods.push(food);
+          console.log(`Added to intolerant foods: ${food}`);
+        }
       }
     });
 
@@ -217,40 +205,11 @@ export default function FoodSensitivityWidget() {
           throw new Error('No food sensitivity data found for your account');
         }
 
-        // Transform the data into the required format
-        const combinedData = [];
-
-        // Process supplements
-        data.forEach(item => {
-          if (item["Supplement Introduced"] && item["Tolerant/Intolerant"]) {
-            combinedData.push({
-              type: 'Supplement',
-              introduction: item["Supplement Introduced"],
-              sensitivity: item["Tolerant/Intolerant"]
-            });
-          }
-          
-          if (item["Food Item Introduced (Genos)"] && item["Tolerant/Intolerant"]) {
-            combinedData.push({
-              type: 'Food',
-              introduction: item["Food Item Introduced (Genos)"],
-              sensitivity: item["Tolerant/Intolerant"]
-            });
-          }
-        });
-
-        console.log('Combined data:', combinedData);
-        
-        if (combinedData.length === 0) {
-          console.log('No tolerance data found after processing');
-          throw new Error('No food sensitivity data found for your account');
-        }
-
         // Store the raw data for debugging
         setRawData(data);
         
         // Process the data into the categorized format
-        const processed = processToleranceData(combinedData);
+        const processed = processToleranceData(data);
         setToleranceData(processed);
         console.log('Processed tolerance data:', processed);
         
@@ -371,45 +330,49 @@ export default function FoodSensitivityWidget() {
               color: '#FFFFFF',
             }}
           >
-            <Typography variant="h6" sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="h6" sx={{ textAlign: 'center', mb: 3, color: '#4CAF50' }}>
               Tolerances
             </Typography>
             
             {/* Supplements */}
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Supplements
-            </Typography>
-            {toleranceData.tolerant.supplements.length > 0 ? (
-              <Box sx={{ mb: 3, pl: 2 }}>
-                {toleranceData.tolerant.supplements.map((supplement, idx) => (
-                  <Typography key={idx} sx={{ mb: 0.5 }}>
-                    - {supplement}
-                  </Typography>
-                ))}
-              </Box>
-            ) : (
-              <Typography sx={{ mb: 3, pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
-                No tolerant supplements found
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
+                🌿 Supplements
               </Typography>
-            )}
+              {toleranceData.tolerant.supplements.length > 0 ? (
+                <Box sx={{ pl: 2 }}>
+                  {toleranceData.tolerant.supplements.map((supplement, idx) => (
+                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                      <span style={{ marginRight: '8px' }}>•</span> {supplement}
+                    </Typography>
+                  ))}
+                </Box>
+              ) : (
+                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                  No tolerant supplements found
+                </Typography>
+              )}
+            </Box>
             
             {/* Foods */}
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Foods
-            </Typography>
-            {toleranceData.tolerant.foods.length > 0 ? (
-              <Box sx={{ pl: 2 }}>
-                {toleranceData.tolerant.foods.map((food, idx) => (
-                  <Typography key={idx} sx={{ mb: 0.5 }}>
-                    - {food}
-                  </Typography>
-                ))}
-              </Box>
-            ) : (
-              <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
-                No tolerant foods found
+            <Box>
+              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
+                🥗 Foods
               </Typography>
-            )}
+              {toleranceData.tolerant.foods.length > 0 ? (
+                <Box sx={{ pl: 2 }}>
+                  {toleranceData.tolerant.foods.map((food, idx) => (
+                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                      <span style={{ marginRight: '8px' }}>•</span> {food}
+                    </Typography>
+                  ))}
+                </Box>
+              ) : (
+                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                  No tolerant foods found
+                </Typography>
+              )}
+            </Box>
           </Paper>
         </Grid>
         
@@ -426,45 +389,49 @@ export default function FoodSensitivityWidget() {
               color: '#FFFFFF',
             }}
           >
-            <Typography variant="h6" sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="h6" sx={{ textAlign: 'center', mb: 3, color: '#f44336' }}>
               Intolerances
             </Typography>
             
             {/* Supplements */}
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Supplements
-            </Typography>
-            {toleranceData.intolerant.supplements.length > 0 ? (
-              <Box sx={{ mb: 3, pl: 2 }}>
-                {toleranceData.intolerant.supplements.map((supplement, idx) => (
-                  <Typography key={idx} sx={{ mb: 0.5 }}>
-                    - {supplement}
-                  </Typography>
-                ))}
-              </Box>
-            ) : (
-              <Typography sx={{ mb: 3, pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
-                No intolerant supplements found
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
+                🌿 Supplements
               </Typography>
-            )}
+              {toleranceData.intolerant.supplements.length > 0 ? (
+                <Box sx={{ pl: 2 }}>
+                  {toleranceData.intolerant.supplements.map((supplement, idx) => (
+                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                      <span style={{ marginRight: '8px' }}>•</span> {supplement}
+                    </Typography>
+                  ))}
+                </Box>
+              ) : (
+                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                  No intolerant supplements found
+                </Typography>
+              )}
+            </Box>
             
             {/* Foods */}
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Foods
-            </Typography>
-            {toleranceData.intolerant.foods.length > 0 ? (
-              <Box sx={{ pl: 2 }}>
-                {toleranceData.intolerant.foods.map((food, idx) => (
-                  <Typography key={idx} sx={{ mb: 0.5 }}>
-                    - {food}
-                  </Typography>
-                ))}
-              </Box>
-            ) : (
-              <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
-                No intolerant foods found
+            <Box>
+              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
+                🥗 Foods
               </Typography>
-            )}
+              {toleranceData.intolerant.foods.length > 0 ? (
+                <Box sx={{ pl: 2 }}>
+                  {toleranceData.intolerant.foods.map((food, idx) => (
+                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                      <span style={{ marginRight: '8px' }}>•</span> {food}
+                    </Typography>
+                  ))}
+                </Box>
+              ) : (
+                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                  No intolerant foods found
+                </Typography>
+              )}
+            </Box>
           </Paper>
         </Grid>
       </Grid>
@@ -484,22 +451,17 @@ export default function FoodSensitivityWidget() {
       {debugMode && (
         <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1, fontSize: '0.8rem' }}>
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-            Table Being Used:
+            Raw Data Sample:
           </Typography>
-          <Typography>weight_logs</Typography>
+          <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
+            {rawData && rawData.length > 0 ? JSON.stringify(rawData[0], null, 2) : 'No data'}
+          </pre>
           
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
             Processed Data:
           </Typography>
           <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
             {JSON.stringify(toleranceData, null, 2)}
-          </pre>
-          
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
-            Raw Data Sample:
-          </Typography>
-          <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
-            {rawData && rawData.length > 0 ? JSON.stringify(rawData[0], null, 2) : 'No data'}
           </pre>
         </Box>
       )}
