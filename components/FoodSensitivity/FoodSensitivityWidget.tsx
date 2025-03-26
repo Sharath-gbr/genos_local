@@ -144,10 +144,65 @@ export default function FoodSensitivityWidget() {
         }
 
         console.log('Raw data from database:', data);
+        console.log('Number of records found:', data?.length || 0);
 
         if (!data || data.length === 0) {
           throw new Error('No food sensitivity data found for your account');
         }
+
+        // Log all unique values for Tolerant/Intolerant to check what we're working with
+        const uniqueToleranceValues = [...new Set(data.map(item => item["Tolerant/Intolerant"]))];
+        console.log('Unique Tolerant/Intolerant values:', uniqueToleranceValues);
+
+        // Log all food items before filtering
+        console.log('All food items before filtering:', data.map(item => ({
+          tolerance: item["Tolerant/Intolerant"],
+          food: item["Food Item Introduced (Genos)"],
+          tolerantFoods: item["Tolerant Food Items"],
+          intolerantFoods: item["Intolerant Food Items"]
+        })));
+
+        // Process tolerant foods from both columns
+        const tolerantFoodsFromIntroduced = data
+          .filter(item => 
+            item["Tolerant/Intolerant"] === 'Tolerant' && 
+            item["Food Item Introduced (Genos)"] && 
+            item["Food Item Introduced (Genos)"].trim() !== ''
+          )
+          .map(item => item["Food Item Introduced (Genos)"].trim());
+
+        const tolerantFoodsFromList = data
+          .filter(item => item["Tolerant Food Items"])
+          .flatMap(item => 
+            item["Tolerant Food Items"]
+              .split(',')
+              .map(food => food.trim())
+              .filter(food => food !== '')
+          );
+
+        console.log('Tolerant foods from Food Item Introduced:', tolerantFoodsFromIntroduced);
+        console.log('Tolerant foods from Tolerant Food Items:', tolerantFoodsFromList);
+
+        // Process intolerant foods from both columns
+        const intolerantFoodsFromIntroduced = data
+          .filter(item => 
+            item["Tolerant/Intolerant"] === 'Intolerant' && 
+            item["Food Item Introduced (Genos)"] && 
+            item["Food Item Introduced (Genos)"].trim() !== ''
+          )
+          .map(item => item["Food Item Introduced (Genos)"].trim());
+
+        const intolerantFoodsFromList = data
+          .filter(item => item["Intolerant Food Items"])
+          .flatMap(item => 
+            item["Intolerant Food Items"]
+              .split(',')
+              .map(food => food.trim())
+              .filter(food => food !== '')
+          );
+
+        console.log('Intolerant foods from Food Item Introduced:', intolerantFoodsFromIntroduced);
+        console.log('Intolerant foods from Intolerant Food Items:', intolerantFoodsFromList);
 
         // Process the results
         const processed: ToleranceData = {
@@ -161,15 +216,10 @@ export default function FoodSensitivityWidget() {
                 )
                 .map(item => item["Supplement Introduced"].trim())
             )].sort(),
-            foods: [...new Set(
-              data
-                .filter(item => 
-                  item["Tolerant/Intolerant"] === 'Tolerant' && 
-                  item["Food Item Introduced (Genos)"] && 
-                  item["Food Item Introduced (Genos)"].trim() !== ''
-                )
-                .map(item => item["Food Item Introduced (Genos)"].trim())
-            )].sort()
+            foods: [...new Set([
+              ...tolerantFoodsFromIntroduced,
+              ...tolerantFoodsFromList
+            ])].sort()
           },
           intolerant: {
             supplements: [...new Set(
@@ -181,19 +231,20 @@ export default function FoodSensitivityWidget() {
                 )
                 .map(item => item["Supplement Introduced"].trim())
             )].sort(),
-            foods: [...new Set(
-              data
-                .filter(item => 
-                  item["Tolerant/Intolerant"] === 'Intolerant' && 
-                  item["Food Item Introduced (Genos)"] && 
-                  item["Food Item Introduced (Genos)"].trim() !== ''
-                )
-                .map(item => item["Food Item Introduced (Genos)"].trim())
-            )].sort()
+            foods: [...new Set([
+              ...intolerantFoodsFromIntroduced,
+              ...intolerantFoodsFromList
+            ])].sort()
           }
         };
 
-        console.log('Processed data:', processed);
+        console.log('Final processed data:', processed);
+        console.log('Counts:', {
+          tolerantSupplements: processed.tolerant.supplements.length,
+          tolerantFoods: processed.tolerant.foods.length,
+          intolerantSupplements: processed.intolerant.supplements.length,
+          intolerantFoods: processed.intolerant.foods.length
+        });
         
         // Store raw data for debugging
         setRawData(data);
