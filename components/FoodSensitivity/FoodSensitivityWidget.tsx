@@ -121,7 +121,7 @@ export default function FoodSensitivityWidget() {
     }
   };
 
-  // Fetch food sensitivity data using separate queries
+  // Fetch food sensitivity data using a single query
   useEffect(() => {
     const fetchToleranceData = async () => {
       if (!userData?.email) {
@@ -133,84 +133,70 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // 1. Fetch tolerant supplements
-        const { data: tolerantSupplements, error: tolerantSupplementsError } = await supabase
+        // Fetch all relevant data in one query
+        const { data, error } = await supabase
           .from('weight_logs')
           .select('*')
-          .eq('Email', userData.email)
-          .eq('Tolerant/Intolerant', 'Tolerant')
-          .not('Supplement Introduced', 'is', null)
-          .not('Supplement Introduced', 'eq', '');
+          .eq('Email', userData.email);
 
-        if (tolerantSupplementsError) {
-          throw new Error(`Failed to fetch tolerant supplements: ${tolerantSupplementsError.message}`);
+        if (error) {
+          throw new Error(`Failed to fetch data: ${error.message}`);
         }
-        console.log('Tolerant supplements:', tolerantSupplements);
 
-        // 2. Fetch tolerant foods
-        const { data: tolerantFoods, error: tolerantFoodsError } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .eq('Email', userData.email)
-          .eq('Tolerant/Intolerant', 'Tolerant')
-          .not('Food Item Introduced (Genos)', 'is', null)
-          .not('Food Item Introduced (Genos)', 'eq', '');
+        console.log('Raw data from database:', data);
 
-        if (tolerantFoodsError) {
-          throw new Error(`Failed to fetch tolerant foods: ${tolerantFoodsError.message}`);
+        if (!data || data.length === 0) {
+          throw new Error('No food sensitivity data found for your account');
         }
-        console.log('Tolerant foods:', tolerantFoods);
-
-        // 3. Fetch intolerant supplements
-        const { data: intolerantSupplements, error: intolerantSupplementsError } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .eq('Email', userData.email)
-          .eq('Tolerant/Intolerant', 'Intolerant')
-          .not('Supplement Introduced', 'is', null)
-          .not('Supplement Introduced', 'eq', '');
-
-        if (intolerantSupplementsError) {
-          throw new Error(`Failed to fetch intolerant supplements: ${intolerantSupplementsError.message}`);
-        }
-        console.log('Intolerant supplements:', intolerantSupplements);
-
-        // 4. Fetch intolerant foods
-        const { data: intolerantFoods, error: intolerantFoodsError } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .eq('Email', userData.email)
-          .eq('Tolerant/Intolerant', 'Intolerant')
-          .not('Food Item Introduced (Genos)', 'is', null)
-          .not('Food Item Introduced (Genos)', 'eq', '');
-
-        if (intolerantFoodsError) {
-          throw new Error(`Failed to fetch intolerant foods: ${intolerantFoodsError.message}`);
-        }
-        console.log('Intolerant foods:', intolerantFoods);
 
         // Process the results
         const processed: ToleranceData = {
           tolerant: {
-            supplements: [...new Set(tolerantSupplements?.map(item => item["Supplement Introduced"]) || [])].sort(),
-            foods: [...new Set(tolerantFoods?.map(item => item["Food Item Introduced (Genos)"]) || [])].sort()
+            supplements: [...new Set(
+              data
+                .filter(item => 
+                  item["Tolerant/Intolerant"] === 'Tolerant' && 
+                  item["Supplement Introduced"] && 
+                  item["Supplement Introduced"].trim() !== ''
+                )
+                .map(item => item["Supplement Introduced"].trim())
+            )].sort(),
+            foods: [...new Set(
+              data
+                .filter(item => 
+                  item["Tolerant/Intolerant"] === 'Tolerant' && 
+                  item["Food Item Introduced (Genos)"] && 
+                  item["Food Item Introduced (Genos)"].trim() !== ''
+                )
+                .map(item => item["Food Item Introduced (Genos)"].trim())
+            )].sort()
           },
           intolerant: {
-            supplements: [...new Set(intolerantSupplements?.map(item => item["Supplement Introduced"]) || [])].sort(),
-            foods: [...new Set(intolerantFoods?.map(item => item["Food Item Introduced (Genos)"]) || [])].sort()
+            supplements: [...new Set(
+              data
+                .filter(item => 
+                  item["Tolerant/Intolerant"] === 'Intolerant' && 
+                  item["Supplement Introduced"] && 
+                  item["Supplement Introduced"].trim() !== ''
+                )
+                .map(item => item["Supplement Introduced"].trim())
+            )].sort(),
+            foods: [...new Set(
+              data
+                .filter(item => 
+                  item["Tolerant/Intolerant"] === 'Intolerant' && 
+                  item["Food Item Introduced (Genos)"] && 
+                  item["Food Item Introduced (Genos)"].trim() !== ''
+                )
+                .map(item => item["Food Item Introduced (Genos)"].trim())
+            )].sort()
           }
         };
 
         console.log('Processed data:', processed);
         
         // Store raw data for debugging
-        setRawData([
-          ...(tolerantSupplements || []),
-          ...(tolerantFoods || []),
-          ...(intolerantSupplements || []),
-          ...(intolerantFoods || [])
-        ]);
-        
+        setRawData(data);
         setToleranceData(processed);
         
       } catch (err) {
