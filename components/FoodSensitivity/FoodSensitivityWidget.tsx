@@ -202,7 +202,11 @@ export default function FoodSensitivityWidget() {
         // Fetch supplements
         const { data: supplementsData, error: supplementsError } = await supabase
           .from('weight_logs')
-          .select('*')
+          .select(`
+            "Email",
+            "Supplement Introduced",
+            "Tolerant/Intolerant"
+          `)
           .eq('Email', userData.email)
           .not('Supplement Introduced', 'is', null)
           .gt('Supplement Introduced', '')
@@ -217,7 +221,11 @@ export default function FoodSensitivityWidget() {
         // Fetch foods
         const { data: foodsData, error: foodsError } = await supabase
           .from('weight_logs')
-          .select('*')
+          .select(`
+            "Email",
+            "Food Item Introduced (Genos)",
+            "Tolerant/Intolerant"
+          `)
           .eq('Email', userData.email)
           .not('Food Item Introduced (Genos)', 'is', null)
           .gt('Food Item Introduced (Genos)', '')
@@ -228,6 +236,10 @@ export default function FoodSensitivityWidget() {
           console.error('Error fetching foods:', foodsError);
           throw new Error('Failed to fetch foods: ' + foodsError.message);
         }
+
+        // Log raw data for debugging
+        console.log('Raw supplements data:', supplementsData);
+        console.log('Raw foods data:', foodsData);
 
         // Combine the data
         const combinedData = [
@@ -247,7 +259,7 @@ export default function FoodSensitivityWidget() {
             }))
         ];
 
-        console.log('Raw query results:', combinedData);
+        console.log('Combined data:', combinedData);
         
         if (!combinedData || combinedData.length === 0) {
           console.log('No tolerance data found');
