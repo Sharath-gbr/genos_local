@@ -27,6 +27,12 @@ interface ToleranceData {
   intolerant: CategoryData;
 }
 
+interface QueryResult {
+  type: string;
+  introduction: string;
+  sensitivity: string;
+}
+
 export default function FoodSensitivityWidget() {
   const [userData, setUserData] = useState<{ firstName: string; lastName: string; email: string } | null>(null);
   const [toleranceData, setToleranceData] = useState<ToleranceData>({
@@ -115,96 +121,7 @@ export default function FoodSensitivityWidget() {
     }
   };
 
-  // Process data into categorized format
-  const processToleranceData = (data: WeightLogData[]): ToleranceData => {
-    const result: ToleranceData = {
-      tolerant: {
-        supplements: [],
-        foods: []
-      },
-      intolerant: {
-        supplements: [],
-        foods: []
-      }
-    };
-
-    // Log the raw data for debugging
-    console.log('Processing raw data:', data);
-    console.log('Total items to process:', data.length);
-
-    data.forEach((item, index) => {
-      console.log(`Processing item ${index + 1}:`, item);
-
-      // Process direct entries
-      const toleranceStatus = item["Tolerant/Intolerant"]?.trim();
-      const supplement = item["Supplement Introduced"]?.trim();
-      const food = item["Food Item Introduced (Genos)"]?.trim();
-
-      // Process comma-separated lists
-      const tolerantFoods = item["Tolerant Food Items"]?.split(',').map(f => f.trim()).filter(Boolean) || [];
-      const intolerantFoods = item["Intolerant Food Items"]?.split(',').map(f => f.trim()).filter(Boolean) || [];
-
-      console.log(`Item ${index + 1} values:`, {
-        toleranceStatus,
-        supplement,
-        food,
-        tolerantFoods,
-        intolerantFoods
-      });
-
-      // Add direct entries based on tolerance status
-      if (toleranceStatus === "Tolerant") {
-        if (supplement) {
-          result.tolerant.supplements.push(supplement);
-          console.log(`Added to tolerant supplements: ${supplement}`);
-        }
-        if (food) {
-          result.tolerant.foods.push(food);
-          console.log(`Added to tolerant foods: ${food}`);
-        }
-      } else if (toleranceStatus === "Intolerant") {
-        if (supplement) {
-          result.intolerant.supplements.push(supplement);
-          console.log(`Added to intolerant supplements: ${supplement}`);
-        }
-        if (food) {
-          result.intolerant.foods.push(food);
-          console.log(`Added to intolerant foods: ${food}`);
-        }
-      }
-
-      // Add items from comma-separated lists
-      result.tolerant.foods.push(...tolerantFoods);
-      result.intolerant.foods.push(...intolerantFoods);
-
-      // Log additions from lists
-      if (tolerantFoods.length) {
-        console.log(`Added ${tolerantFoods.length} items to tolerant foods from list:`, tolerantFoods);
-      }
-      if (intolerantFoods.length) {
-        console.log(`Added ${intolerantFoods.length} items to intolerant foods from list:`, intolerantFoods);
-      }
-    });
-
-    // Remove duplicates and sort alphabetically
-    result.tolerant.supplements = [...new Set(result.tolerant.supplements)].sort();
-    result.tolerant.foods = [...new Set(result.tolerant.foods)].sort();
-    result.intolerant.supplements = [...new Set(result.intolerant.supplements)].sort();
-    result.intolerant.foods = [...new Set(result.intolerant.foods)].sort();
-
-    // Log final processed results
-    console.log('Final processed data:', result);
-    console.log('Final counts:', {
-      tolerantSupplements: result.tolerant.supplements.length,
-      tolerantFoods: result.tolerant.foods.length,
-      intolerantSupplements: result.intolerant.supplements.length,
-      intolerantFoods: result.intolerant.foods.length
-    });
-
-    return result;
-  };
-
-  // Fetch food sensitivity data from weight_logs table
+  // Fetch food sensitivity data using separate queries
   useEffect(() => {
     const fetchToleranceData = async () => {
       if (!userData?.email) {
@@ -216,81 +133,89 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // First, let's check if we can access the table
-        const tableCheck = await supabase
+        // 1. Fetch tolerant supplements
+        const { data: tolerantSupplements, error: tolerantSupplementsError } = await supabase
           .from('weight_logs')
-          .select('count()')
-          .single();
-          
-        console.log('Table access check result:', tableCheck);
-        
-        if (tableCheck.error) {
-          throw new Error(`Table access error: ${tableCheck.error.message}`);
+          .select('"Supplement Introduced", "Tolerant/Intolerant"')
+          .eq('Email', userData.email)
+          .eq('Tolerant/Intolerant', 'Tolerant')
+          .not('Supplement Introduced', 'is', null)
+          .not('Supplement Introduced', 'eq', '');
+
+        if (tolerantSupplementsError) {
+          throw new Error(`Failed to fetch tolerant supplements: ${tolerantSupplementsError.message}`);
         }
+        console.log('Tolerant supplements:', tolerantSupplements);
 
-        // Try exact match first
-        let { data: exactData, error: exactError } = await supabase
+        // 2. Fetch tolerant foods
+        const { data: tolerantFoods, error: tolerantFoodsError } = await supabase
           .from('weight_logs')
-          .select('*')
-          .eq('Email', userData.email);
+          .select('"Food Item Introduced (Genos)", "Tolerant/Intolerant"')
+          .eq('Email', userData.email)
+          .eq('Tolerant/Intolerant', 'Tolerant')
+          .not('Food Item Introduced (Genos)', 'is', null)
+          .not('Food Item Introduced (Genos)', 'eq', '');
 
-        console.log('Exact match query response:', { data: exactData, error: exactError });
-        
-        // If no exact match, try case-insensitive search
-        if (!exactData?.length) {
-          console.log('No exact match found, trying case-insensitive search...');
-          const { data: fuzzyData, error: fuzzyError } = await supabase
-            .from('weight_logs')
-            .select('*')
-            .ilike('Email', userData.email);
-            
-          console.log('Case-insensitive search results:', { data: fuzzyData, error: fuzzyError });
-          
-          if (fuzzyError) {
-            throw new Error(`Failed to fetch data (case-insensitive): ${fuzzyError.message}`);
+        if (tolerantFoodsError) {
+          throw new Error(`Failed to fetch tolerant foods: ${tolerantFoodsError.message}`);
+        }
+        console.log('Tolerant foods:', tolerantFoods);
+
+        // 3. Fetch intolerant supplements
+        const { data: intolerantSupplements, error: intolerantSupplementsError } = await supabase
+          .from('weight_logs')
+          .select('"Supplement Introduced", "Tolerant/Intolerant"')
+          .eq('Email', userData.email)
+          .eq('Tolerant/Intolerant', 'Intolerant')
+          .not('Supplement Introduced', 'is', null)
+          .not('Supplement Introduced', 'eq', '');
+
+        if (intolerantSupplementsError) {
+          throw new Error(`Failed to fetch intolerant supplements: ${intolerantSupplementsError.message}`);
+        }
+        console.log('Intolerant supplements:', intolerantSupplements);
+
+        // 4. Fetch intolerant foods
+        const { data: intolerantFoods, error: intolerantFoodsError } = await supabase
+          .from('weight_logs')
+          .select('"Food Item Introduced (Genos)", "Tolerant/Intolerant"')
+          .eq('Email', userData.email)
+          .eq('Tolerant/Intolerant', 'Intolerant')
+          .not('Food Item Introduced (Genos)', 'is', null)
+          .not('Food Item Introduced (Genos)', 'eq', '');
+
+        if (intolerantFoodsError) {
+          throw new Error(`Failed to fetch intolerant foods: ${intolerantFoodsError.message}`);
+        }
+        console.log('Intolerant foods:', intolerantFoods);
+
+        // Process the results
+        const processed: ToleranceData = {
+          tolerant: {
+            supplements: [...new Set(tolerantSupplements?.map(item => item["Supplement Introduced"]) || [])].sort(),
+            foods: [...new Set(tolerantFoods?.map(item => item["Food Item Introduced (Genos)"]) || [])].sort()
+          },
+          intolerant: {
+            supplements: [...new Set(intolerantSupplements?.map(item => item["Supplement Introduced"]) || [])].sort(),
+            foods: [...new Set(intolerantFoods?.map(item => item["Food Item Introduced (Genos)"]) || [])].sort()
           }
-          
-          exactData = fuzzyData;
-        }
+        };
 
-        if (!exactData || exactData.length === 0) {
-          throw new Error(`No food sensitivity data found for email: ${userData.email}`);
-        }
-
-        // Log the first few records to see their structure
-        console.log('First record structure:', exactData[0]);
-        console.log('Available columns:', exactData[0] ? Object.keys(exactData[0]) : 'No columns');
-        console.log('Sample values from first record:', {
-          email: exactData[0].Email || exactData[0].email,
-          toleranceStatus: exactData[0]["Tolerant/Intolerant"],
-          supplement: exactData[0]["Supplement Introduced"],
-          food: exactData[0]["Food Item Introduced (Genos)"],
-          tolerantFoods: exactData[0]["Tolerant Food Items"],
-          intolerantFoods: exactData[0]["Intolerant Food Items"]
-        });
-
-        // Store the raw data for debugging
-        setRawData(exactData);
+        console.log('Processed data:', processed);
         
-        // Process the data into the categorized format
-        const processed = processToleranceData(exactData);
-        console.log('Processed data structure:', processed);
-        console.log('Data counts:', {
-          tolerantSupplements: processed.tolerant.supplements.length,
-          tolerantFoods: processed.tolerant.foods.length,
-          intolerantSupplements: processed.intolerant.supplements.length,
-          intolerantFoods: processed.intolerant.foods.length,
-          totalRecords: exactData.length
-        });
+        // Store raw data for debugging
+        setRawData([
+          ...(tolerantSupplements || []),
+          ...(tolerantFoods || []),
+          ...(intolerantSupplements || []),
+          ...(intolerantFoods || [])
+        ]);
         
         setToleranceData(processed);
         
       } catch (err) {
         console.error('Error in fetchToleranceData:', err);
         setError(`Failed to fetch your food sensitivity data: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        
-        // When error occurs, fetch available tables and log table structure
-        fetchAvailableTables();
       } finally {
         setIsLoading(false);
       }
