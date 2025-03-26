@@ -199,50 +199,68 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Attempting to fetch tolerance data for email:', userData.email);
         
-        // Update the data fetching query to match the SQL structure
-        const query = `
-          with combined_data as (
-            select 
-              CASE 
-                WHEN "Supplement Introduced" IS NOT NULL AND length("Supplement Introduced") > 0 THEN 'Supplement'
-                WHEN "Food Item Introduced (Genos)" IS NOT NULL AND length("Food Item Introduced (Genos)") > 0 THEN 'Food'
-              END as type,
-              COALESCE("Supplement Introduced", "Food Item Introduced (Genos)") as introduction,
-              "Tolerant/Intolerant" as sensitivity
-            from public.weight_logs
-            where "Email" = '${userData.email}'
-            and (
-              ("Supplement Introduced" IS NOT NULL AND length("Supplement Introduced") > 0) OR
-              ("Food Item Introduced (Genos)" IS NOT NULL AND length("Food Item Introduced (Genos)") > 0)
-            )
-            and "Tolerant/Intolerant" IS NOT NULL
-            and length("Tolerant/Intolerant") > 0
-          )
-          select distinct type, introduction, sensitivity
-          from combined_data
-          where introduction is not null
-          order by type, sensitivity, introduction;
-        `;
+        // Fetch supplements
+        const { data: supplementsData, error: supplementsError } = await supabase
+          .from('weight_logs')
+          .select(`
+            "Supplement Introduced",
+            "Tolerant/Intolerant"
+          `)
+          .eq('Email', userData.email)
+          .not('Supplement Introduced', 'is', null)
+          .gt('Supplement Introduced', '')
+          .not('Tolerant/Intolerant', 'is', null)
+          .gt('Tolerant/Intolerant', '');
 
-        const { data, error } = await supabase.rpc('execute_query', { query_text: query });
-
-        if (error) {
-          console.error('Error fetching tolerance data:', error);
-          throw new Error('Failed to fetch your food sensitivity data: ' + error.message);
+        if (supplementsError) {
+          console.error('Error fetching supplements:', supplementsError);
+          throw new Error('Failed to fetch supplements: ' + supplementsError.message);
         }
 
-        if (!data || data.length === 0) {
+        // Fetch foods
+        const { data: foodsData, error: foodsError } = await supabase
+          .from('weight_logs')
+          .select(`
+            "Food Item Introduced (Genos)",
+            "Tolerant/Intolerant"
+          `)
+          .eq('Email', userData.email)
+          .not('Food Item Introduced (Genos)', 'is', null)
+          .gt('Food Item Introduced (Genos)', '')
+          .not('Tolerant/Intolerant', 'is', null)
+          .gt('Tolerant/Intolerant', '');
+
+        if (foodsError) {
+          console.error('Error fetching foods:', foodsError);
+          throw new Error('Failed to fetch foods: ' + foodsError.message);
+        }
+
+        // Combine the data
+        const combinedData = [
+          ...(supplementsData || []).map(item => ({
+            type: 'Supplement',
+            introduction: item["Supplement Introduced"],
+            sensitivity: item["Tolerant/Intolerant"]
+          })),
+          ...(foodsData || []).map(item => ({
+            type: 'Food',
+            introduction: item["Food Item Introduced (Genos)"],
+            sensitivity: item["Tolerant/Intolerant"]
+          }))
+        ];
+
+        console.log('Raw query results:', combinedData);
+        
+        if (!combinedData || combinedData.length === 0) {
           console.log('No tolerance data found');
           throw new Error('No food sensitivity data found for your account');
         }
 
-        console.log('Raw query results:', data);
-        
         // Store the raw data for debugging
-        setRawData(data);
+        setRawData(combinedData);
         
         // Process the data into the categorized format
-        const processed = processToleranceData(data);
+        const processed = processToleranceData(combinedData);
         setToleranceData(processed);
         console.log('Processed tolerance data:', processed);
         
