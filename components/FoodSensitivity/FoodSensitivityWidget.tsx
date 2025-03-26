@@ -202,10 +202,7 @@ export default function FoodSensitivityWidget() {
         // Fetch supplements
         const { data: supplementsData, error: supplementsError } = await supabase
           .from('weight_logs')
-          .select(`
-            "Supplement Introduced",
-            "Tolerant/Intolerant"
-          `)
+          .select('*')
           .eq('Email', userData.email)
           .not('Supplement Introduced', 'is', null)
           .gt('Supplement Introduced', '')
@@ -220,10 +217,7 @@ export default function FoodSensitivityWidget() {
         // Fetch foods
         const { data: foodsData, error: foodsError } = await supabase
           .from('weight_logs')
-          .select(`
-            "Food Item Introduced (Genos)",
-            "Tolerant/Intolerant"
-          `)
+          .select('*')
           .eq('Email', userData.email)
           .not('Food Item Introduced (Genos)', 'is', null)
           .gt('Food Item Introduced (Genos)', '')
@@ -237,16 +231,20 @@ export default function FoodSensitivityWidget() {
 
         // Combine the data
         const combinedData = [
-          ...(supplementsData || []).map(item => ({
-            type: 'Supplement',
-            introduction: item["Supplement Introduced"],
-            sensitivity: item["Tolerant/Intolerant"]
-          })),
-          ...(foodsData || []).map(item => ({
-            type: 'Food',
-            introduction: item["Food Item Introduced (Genos)"],
-            sensitivity: item["Tolerant/Intolerant"]
-          }))
+          ...(supplementsData || [])
+            .filter(item => item["Supplement Introduced"] && item["Tolerant/Intolerant"])
+            .map(item => ({
+              type: 'Supplement',
+              introduction: item["Supplement Introduced"],
+              sensitivity: item["Tolerant/Intolerant"]
+            })),
+          ...(foodsData || [])
+            .filter(item => item["Food Item Introduced (Genos)"] && item["Tolerant/Intolerant"])
+            .map(item => ({
+              type: 'Food',
+              introduction: item["Food Item Introduced (Genos)"],
+              sensitivity: item["Tolerant/Intolerant"]
+            }))
         ];
 
         console.log('Raw query results:', combinedData);
