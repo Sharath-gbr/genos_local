@@ -6,49 +6,37 @@ import {
   Box,
   Typography,
   Paper,
-  CircularProgress,
   Alert,
+  CircularProgress,
   Accordion,
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Label } from 'recharts';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ScaleIcon from '@mui/icons-material/Scale';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import TimelineIcon from '@mui/icons-material/Timeline';
 
-interface WeightLogData {
-  id?: string;
-  Email?: string;
-  email?: string;
-  Weight?: number;
-  Date?: string;
-  "Food Item Introduced (Genos)"?: string;
-  "Food Item Introduced  (Genos)"?: string;
-  [key: string]: any;
-}
-
-interface ChartDataPoint {
-  date: string;
+interface WeightLogEntry {
+  day: string;
   weight: number;
-  foodIntroduced?: string;
-  isSpike?: boolean;
+  food: string | null;
+  isSpike: boolean;
+  dayNumber: number;
 }
 
 export default function GenosJourneyWidget() {
-  const [userData, setUserData] = useState<{ firstName: string; lastName: string; email: string } | null>(null);
-  const [weightData, setWeightData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [weightData, setWeightData] = useState<WeightLogEntry[]>([]);
   const [expanded, setExpanded] = useState<boolean>(true);
+  const [userData, setUserData] = useState<{ email: string } | null>(null);
   
   const supabase = createClient();
-  
+
   // Fetch the user's data from Supabase auth
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        setIsLoading(true);
-        
         // Get the current user session
         const { data, error } = await supabase.auth.getUser();
         
@@ -57,12 +45,8 @@ export default function GenosJourneyWidget() {
         }
         
         if (data?.user) {
-          // Extract user metadata containing first name and last name
-          const metadata = data.user.user_metadata;
-          
+          console.log('User email for Genos Journey:', data.user.email);
           setUserData({
-            firstName: metadata?.first_name || '',
-            lastName: metadata?.last_name || '',
             email: data.user.email || '',
           });
         } else {
@@ -71,8 +55,6 @@ export default function GenosJourneyWidget() {
       } catch (err) {
         console.error('Error fetching user data:', err);
         setError('Failed to fetch user data');
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -83,26 +65,22 @@ export default function GenosJourneyWidget() {
   useEffect(() => {
     const fetchWeightData = async () => {
       if (!userData?.email) {
-        console.log('No user email available, skipping data fetch');
         return;
       }
       
       try {
         setIsLoading(true);
-        console.log('Fetching weight data for email:', userData.email);
         
-        // Fetch weight logs with date and introduced food items
+        // Fetch all relevant data in one query
         const { data, error } = await supabase
           .from('weight_logs')
           .select(`
-            id,
-            Date,
-            Weight,
-            "Food Item Introduced (Genos)",
+            "Day of the Program",
+            "Weight Recorded",
             "Food Item Introduced  (Genos)"
           `)
           .eq('Email', userData.email)
-          .order('Date', { ascending: true });
+          .order('"Day of the Program"', { ascending: true });
 
         if (error) {
           throw new Error(`Failed to fetch weight data: ${error.message}`);
@@ -110,38 +88,46 @@ export default function GenosJourneyWidget() {
 
         console.log('Raw weight data:', data);
 
-        if (!data || data.length === 0) {
-          setWeightData([]);
-          return;
-        }
-
         // Process the data for the chart
-        const processedData: ChartDataPoint[] = data.map((item: WeightLogData) => {
-          // Handle both column name variations
-          const foodItem = item["Food Item Introduced (Genos)"] || item["Food Item Introduced  (Genos)"] || '';
+        const processedData = data?.map((entry: any, index: number) => {
+          // Extract day and convert to number if possible
+          let day = entry["Day of the Program"] || '';
+          let dayNumber = parseInt(day.replace(/\D/g, '')) || (index + 1);
+          
+          // Extract weight and convert to number
+          let weight = parseFloat(entry["Weight Recorded"] || '0') || 0;
+          
+          // Extract food item
+          let food = entry["Food Item Introduced  (Genos)"] || null;
           
           return {
-            date: new Date(item.Date || '').toLocaleDateString(),
-            weight: item.Weight || 0,
-            foodIntroduced: foodItem,
-            // We'll calculate spikes after all data is processed
+            day,
+            dayNumber,
+            weight,
+            food,
+            isSpike: false, // We'll calculate this in the next step
           };
-        }).filter(item => item.weight > 0); // Filter out entries with no weight data
+        }) || [];
 
-        // Sort by date
-        processedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        // Identify weight spikes (significant increases from previous day)
-        for (let i = 1; i < processedData.length; i++) {
-          const weightDiff = processedData[i].weight - processedData[i-1].weight;
-          // Consider a spike if weight increases by more than 1.5% from previous reading
-          processedData[i].isSpike = weightDiff > (processedData[i-1].weight * 0.015);
+        // Calculate average weight and identify spikes
+        if (processedData.length > 0) {
+          const weights = processedData.filter(d => d.weight > 0).map(d => d.weight);
+          const avgWeight = weights.reduce((sum, weight) => sum + weight, 0) / weights.length;
+          const threshold = avgWeight * 0.02; // 2% above average is considered a spike
+          
+          processedData.forEach((entry, i) => {
+            if (i > 0 && entry.weight > 0 && processedData[i-1].weight > 0) {
+              const increase = entry.weight - processedData[i-1].weight;
+              entry.isSpike = increase > threshold;
+            }
+          });
         }
 
-        setWeightData(processedData);
+        setWeightData(processedData.filter(d => d.weight > 0)); // Filter out entries with no weight
+        
       } catch (err) {
         console.error('Error in fetchWeightData:', err);
-        setError(`Failed to fetch your weight data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        setError(`Failed to fetch weight journey data: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         setIsLoading(false);
       }
@@ -158,26 +144,27 @@ export default function GenosJourneyWidget() {
       const data = payload[0].payload;
       return (
         <Paper sx={{ 
-          p: 1.5, 
+          p: 2, 
           bgcolor: 'rgba(35, 35, 35, 0.95)', 
           border: '1px solid rgba(255, 95, 31, 0.2)',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+          color: '#FFFFFF',
+          boxShadow: 3,
+          maxWidth: 220
         }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-            {data.date}
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+            Day: {data.day}
           </Typography>
-          <Typography variant="body2">
+          <Typography sx={{ fontSize: '0.9rem' }}>
             Weight: {data.weight} kg
           </Typography>
-          {data.foodIntroduced && (
-            <Typography variant="body2" sx={{ mt: 0.5, color: data.isSpike ? '#f44336' : 'inherit' }}>
-              Food: {data.foodIntroduced}
-              {data.isSpike && ' ⚠️'}
-            </Typography>
-          )}
-          {data.isSpike && (
-            <Typography variant="body2" sx={{ mt: 0.5, color: '#f44336', fontWeight: 500 }}>
-              Potential sensitivity detected!
+          {data.food && (
+            <Typography sx={{ 
+              fontSize: '0.9rem', 
+              mt: 1, 
+              color: data.isSpike ? '#ff7043' : '#8BC34A' 
+            }}>
+              Food: {data.food}
+              {data.isSpike && <span style={{ color: '#ff7043', marginLeft: 4 }}>⚠️ Spike</span>}
             </Typography>
           )}
         </Paper>
@@ -188,7 +175,7 @@ export default function GenosJourneyWidget() {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
         <CircularProgress color="primary" />
         <Typography sx={{ ml: 2 }}>Loading your weight journey data...</Typography>
       </Box>
@@ -197,18 +184,8 @@ export default function GenosJourneyWidget() {
 
   if (error) {
     return (
-      <Box>
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      </Box>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <Alert severity="warning" sx={{ mb: 3 }}>
-        Please log in to view your weight journey data.
+      <Alert severity="error" sx={{ mb: 3 }}>
+        {error}
       </Alert>
     );
   }
@@ -216,7 +193,7 @@ export default function GenosJourneyWidget() {
   if (weightData.length === 0) {
     return (
       <Alert severity="info" sx={{ mb: 3 }}>
-        No weight journey data found for {userData.firstName || ''} {userData.lastName || ''}. Please ensure your weight logs are properly entered in the system.
+        No weight journey data found. Please ensure your data is properly entered in the system.
       </Alert>
     );
   }
@@ -225,8 +202,8 @@ export default function GenosJourneyWidget() {
     <Accordion 
       expanded={expanded}
       onChange={() => setExpanded(!expanded)}
-      sx={{ 
-        mb: 2,
+      sx={{
+        mt: 3,
         background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
         border: '1px solid rgba(255, 95, 31, 0.2)',
         color: '#FFFFFF',
@@ -240,10 +217,10 @@ export default function GenosJourneyWidget() {
           left: 0,
           width: '100%',
           height: '4px',
-          background: 'linear-gradient(90deg, #FF5F1F 0%, #FFA726 100%)',
+          background: 'linear-gradient(90deg, #2196F3 0%, #03A9F4 100%)',
         },
         '&.Mui-expanded': {
-          margin: 0,
+          margin: '16px 0',
         }
       }}
     >
@@ -259,88 +236,101 @@ export default function GenosJourneyWidget() {
           }
         }}
       >
-        <ScaleIcon sx={{ color: '#FF5F1F', mr: 1.5, fontSize: 24 }} />
-        <Typography variant="h6" sx={{ color: '#FF5F1F', fontWeight: 600 }}>
-          Genos Journey
+        <TimelineIcon sx={{ color: '#2196F3', mr: 1.5, fontSize: 24 }} />
+        <Typography variant="h6" sx={{ color: '#2196F3', fontWeight: 600 }}>
+          Genos Journey ({weightData.length} days)
         </Typography>
       </AccordionSummary>
-      <AccordionDetails sx={{ padding: '16px' }}>
-        <Typography variant="body2" sx={{ mb: 2, color: 'rgba(255, 255, 255, 0.7)' }}>
-          Your weight journey showing potential food sensitivities. Weight spikes may indicate a reaction to recently introduced foods.
+      <AccordionDetails sx={{ padding: '0 16px 16px' }}>
+        <Typography variant="body2" sx={{ mb: 2, color: 'rgba(255,255,255,0.7)' }}>
+          Your weight journey over time. Weight spikes are highlighted and associated with introduced foods.
         </Typography>
         
-        <Box sx={{ height: 300, width: '100%' }}>
+        <Box sx={{ height: 300, position: 'relative' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={weightData}
-              margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis 
-                dataKey="date" 
-                stroke="rgba(255,255,255,0.5)"
-                tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
-                tickLine={{ stroke: 'rgba(255,255,255,0.3)' }}
-              />
+                dataKey="dayNumber" 
+                stroke="#FFFFFF" 
+                tick={{ fill: '#FFFFFF' }}
+              >
+                <Label
+                  value="Day of Program"
+                  position="insideBottom"
+                  offset={-5}
+                  style={{ textAnchor: 'middle', fill: '#FFFFFF' }}
+                />
+              </XAxis>
               <YAxis 
-                stroke="rgba(255,255,255,0.5)"
-                tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
-                tickLine={{ stroke: 'rgba(255,255,255,0.3)' }}
-                domain={['auto', 'auto']} 
-                label={{ 
-                  value: 'Weight (kg)', 
-                  angle: -90, 
-                  position: 'insideLeft',
-                  style: { textAnchor: 'middle', fill: 'rgba(255,255,255,0.6)', fontSize: 12 }
-                }}
-              />
+                stroke="#FFFFFF" 
+                tick={{ fill: '#FFFFFF' }}
+                domain={['auto', 'auto']}
+              >
+                <Label
+                  value="Weight (kg)"
+                  position="insideLeft"
+                  angle={-90}
+                  style={{ textAnchor: 'middle', fill: '#FFFFFF' }}
+                />
+              </YAxis>
               <Tooltip content={<CustomTooltip />} />
-              <Line 
-                type="monotone" 
-                dataKey="weight" 
-                stroke="#FF5F1F" 
-                strokeWidth={2}
+              
+              {/* Average Weight Line */}
+              {weightData.length > 0 && (
+                <ReferenceLine 
+                  y={weightData.reduce((sum, entry) => sum + entry.weight, 0) / weightData.length} 
+                  stroke="#FFEB3B" 
+                  strokeDasharray="3 3"
+                  label={{ 
+                    value: "Avg", 
+                    position: "right", 
+                    fill: "#FFEB3B" 
+                  }} 
+                />
+              )}
+              
+              <Line
+                type="monotone"
+                dataKey="weight"
+                stroke="#2196F3"
                 dot={(props) => {
-                  const { cx, cy, payload } = props;
-                  return payload.isSpike ? (
-                    <svg x={cx - 6} y={cy - 6} width={12} height={12} fill="#f44336" viewBox="0 0 12 12">
-                      <circle cx="6" cy="6" r="6" />
-                    </svg>
-                  ) : (
-                    <svg x={cx - 4} y={cy - 4} width={8} height={8} fill="#FF5F1F" viewBox="0 0 8 8">
-                      <circle cx="4" cy="4" r="4" />
-                    </svg>
+                  const isSpike = props.payload?.isSpike;
+                  return (
+                    <circle
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={isSpike ? 6 : 4}
+                      fill={isSpike ? "#ff7043" : "#2196F3"}
+                      stroke={isSpike ? "#ff7043" : "#2196F3"}
+                      strokeWidth={isSpike ? 2 : 1}
+                    />
                   );
                 }}
-                activeDot={{ r: 8, fill: '#FFA726' }}
+                activeDot={{ r: 8, fill: '#03A9F4' }}
+                strokeWidth={2}
               />
-              {/* Add reference lines for weight spikes */}
-              {weightData.filter(d => d.isSpike).map((d, i) => (
-                <ReferenceLine key={i} x={d.date} stroke="#f44336" strokeDasharray="3 3" />
-              ))}
             </LineChart>
           </ResponsiveContainer>
         </Box>
         
-        {/* Legend */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, flexWrap: 'wrap', gap: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#FF5F1F', mr: 1 }} />
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Weight
-            </Typography>
+        {/* Weight Spike Legend */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 4 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#2196F3', mr: 1 }} />
+            <Typography variant="body2">Normal Weight</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#f44336', mr: 1 }} />
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Weight spike
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ width: 2, height: 12, bgcolor: '#f44336', mr: 1 }} />
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Potential sensitivity
-            </Typography>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#ff7043', mr: 1 }} />
+            <Typography variant="body2">Weight Spike</Typography>
           </Box>
         </Box>
       </AccordionDetails>

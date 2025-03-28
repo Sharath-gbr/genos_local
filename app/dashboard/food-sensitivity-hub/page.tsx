@@ -13,6 +13,7 @@ export default function FoodSensitivityHub() {
       </Typography>
       
       <FoodSensitivityWidget />
+      
       <GenosJourneyWidget />
     </Box>
   );
