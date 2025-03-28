@@ -121,7 +121,7 @@ export default function FoodSensitivityWidget() {
     }
   };
 
-  // Fetch food sensitivity data using a single query
+  // Fetch food sensitivity data using separate queries for foods and supplements
   useEffect(() => {
     const fetchToleranceData = async () => {
       if (!userData?.email) {
@@ -133,110 +133,71 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // Fetch all relevant data in one query
-        const { data, error } = await supabase
+        // Fetch foods data
+        const { data: foodData, error: foodError } = await supabase
           .from('weight_logs')
           .select('*')
-          .eq('Email', userData.email);
+          .eq('email', userData.email)
+          .eq('type', 'Food');
 
-        if (error) {
-          throw new Error(`Failed to fetch data: ${error.message}`);
+        if (foodError) {
+          throw new Error(`Failed to fetch food data: ${foodError.message}`);
         }
 
-        console.log('Raw data from database:', data);
-        console.log('Number of records found:', data?.length || 0);
+        // Fetch supplements data
+        const { data: supplementData, error: supplementError } = await supabase
+          .from('weight_logs')
+          .select('*')
+          .eq('email', userData.email)
+          .eq('type', 'Supplement');
 
-        if (!data || data.length === 0) {
-          throw new Error('No food sensitivity data found for your account');
+        if (supplementError) {
+          throw new Error(`Failed to fetch supplement data: ${supplementError.message}`);
         }
 
-        // Log all unique values for Tolerant/Intolerant to check what we're working with
-        const uniqueToleranceValues = [...new Set(data.map(item => item["Tolerant/Intolerant"]))];
-        console.log('Unique Tolerant/Intolerant values:', uniqueToleranceValues);
+        console.log('Raw food data:', foodData);
+        console.log('Raw supplement data:', supplementData);
 
-        // Log all food items before filtering
-        console.log('All food items before filtering:', data.map(item => ({
-          tolerance: item["Tolerant/Intolerant"],
-          food: item["Food Item Introduced (Genos)"],
-          tolerantFoods: item["Tolerant Food Items"],
-          intolerantFoods: item["Intolerant Food Items"]
-        })));
-
-        // Process tolerant foods from both columns
-        const tolerantFoodsFromIntroduced = data
-          .filter(item => 
-            item["Tolerant/Intolerant"] === 'Tolerant' && 
-            item["Food Item Introduced (Genos)"] && 
-            item["Food Item Introduced (Genos)"].trim() !== ''
-          )
-          .map(item => item["Food Item Introduced (Genos)"].trim());
-
-        const tolerantFoodsFromList = data
-          .filter(item => item["Tolerant Food Items"])
-          .flatMap(item => 
-            item["Tolerant Food Items"]
-              .split(',')
-              .map(food => food.trim())
-              .filter(food => food !== '')
-          );
-
-        console.log('Tolerant foods from Food Item Introduced:', tolerantFoodsFromIntroduced);
-        console.log('Tolerant foods from Tolerant Food Items:', tolerantFoodsFromList);
-
-        // Process intolerant foods from both columns
-        const intolerantFoodsFromIntroduced = data
-          .filter(item => 
-            item["Tolerant/Intolerant"] === 'Intolerant' && 
-            item["Food Item Introduced (Genos)"] && 
-            item["Food Item Introduced (Genos)"].trim() !== ''
-          )
-          .map(item => item["Food Item Introduced (Genos)"].trim());
-
-        const intolerantFoodsFromList = data
-          .filter(item => item["Intolerant Food Items"])
-          .flatMap(item => 
-            item["Intolerant Food Items"]
-              .split(',')
-              .map(food => food.trim())
-              .filter(food => food !== '')
-          );
-
-        console.log('Intolerant foods from Food Item Introduced:', intolerantFoodsFromIntroduced);
-        console.log('Intolerant foods from Intolerant Food Items:', intolerantFoodsFromList);
-
-        // Process the results
         const processed: ToleranceData = {
           tolerant: {
-            supplements: [...new Set(
-              data
-                .filter(item => 
-                  item["Tolerant/Intolerant"] === 'Tolerant' && 
-                  item["Supplement Introduced"] && 
-                  item["Supplement Introduced"].trim() !== ''
-                )
-                .map(item => item["Supplement Introduced"].trim())
-            )].sort(),
-            foods: [...new Set([
-              ...tolerantFoodsFromIntroduced,
-              ...tolerantFoodsFromList
-            ])].sort()
+            supplements: [],
+            foods: []
           },
           intolerant: {
-            supplements: [...new Set(
-              data
-                .filter(item => 
-                  item["Tolerant/Intolerant"] === 'Intolerant' && 
-                  item["Supplement Introduced"] && 
-                  item["Supplement Introduced"].trim() !== ''
-                )
-                .map(item => item["Supplement Introduced"].trim())
-            )].sort(),
-            foods: [...new Set([
-              ...intolerantFoodsFromIntroduced,
-              ...intolerantFoodsFromList
-            ])].sort()
+            supplements: [],
+            foods: []
           }
         };
+
+        // Process food data
+        foodData?.forEach((row: any) => {
+          const item = row.introduction?.trim();
+          if (item) {
+            if (row.sensitivity?.toLowerCase() === 'tolerant') {
+              processed.tolerant.foods.push(item);
+            } else if (row.sensitivity?.toLowerCase() === 'intolerant') {
+              processed.intolerant.foods.push(item);
+            }
+          }
+        });
+
+        // Process supplement data
+        supplementData?.forEach((row: any) => {
+          const item = row.introduction?.trim();
+          if (item) {
+            if (row.sensitivity?.toLowerCase() === 'tolerant') {
+              processed.tolerant.supplements.push(item);
+            } else if (row.sensitivity?.toLowerCase() === 'intolerant') {
+              processed.intolerant.supplements.push(item);
+            }
+          }
+        });
+
+        // Sort all arrays
+        processed.tolerant.supplements.sort();
+        processed.tolerant.foods.sort();
+        processed.intolerant.supplements.sort();
+        processed.intolerant.foods.sort();
 
         console.log('Final processed data:', processed);
         console.log('Counts:', {
@@ -247,7 +208,7 @@ export default function FoodSensitivityWidget() {
         });
         
         // Store raw data for debugging
-        setRawData(data);
+        setRawData([...(foodData || []), ...(supplementData || [])]);
         setToleranceData(processed);
         
       } catch (err) {
