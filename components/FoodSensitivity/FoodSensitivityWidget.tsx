@@ -133,14 +133,22 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // Fetch all data in one query with corrected column names
+        // First, let's get a sample row to see the column structure
+        const { data: sampleData, error: sampleError } = await supabase
+          .from('weight_logs')
+          .select('*')
+          .limit(1);
+
+        if (sampleError) {
+          throw new Error(`Failed to fetch sample data: ${sampleError.message}`);
+        }
+
+        console.log('Sample data structure:', sampleData?.[0] ? Object.keys(sampleData[0]) : 'No sample data');
+
+        // Now fetch the actual data
         const { data, error } = await supabase
           .from('weight_logs')
-          .select(`
-            food_item_introduced,
-            supplement_introduced,
-            tolerance_status
-          `)
+          .select('*')
           .eq('Email_Id', userData.email);
 
         if (error) {
@@ -161,32 +169,34 @@ export default function FoodSensitivityWidget() {
         };
 
         // Process each row
-        data?.forEach((row: any) => {
-          const isTolerant = row.tolerance_status?.toLowerCase() === 'tolerant';
+        data?.forEach((row: WeightLogData) => {
+          const isTolerant = row["Tolerant/Intolerant"]?.toLowerCase() === 'tolerant';
           const category = isTolerant ? 'tolerant' : 'intolerant';
 
-          // Process foods
-          if (row.food_item_introduced) {
-            const foods = row.food_item_introduced
-              .split(',')
-              .map((item: string) => item.trim())
-              .filter((item: string) => item);
+          // Process foods from both columns
+          const foodItems = [
+            ...(row["Food Item Introduced (Genos)"]?.split(',') || []),
+            ...(row["Tolerant Food Items"]?.split(',') || []),
+            ...(row["Intolerant Food Items"]?.split(',') || [])
+          ];
 
-            foods.forEach((food: string) => {
+          foodItems
+            .map(item => item.trim())
+            .filter(item => item)
+            .forEach(food => {
               if (!processed[category].foods.includes(food)) {
                 processed[category].foods.push(food);
               }
             });
-          }
 
           // Process supplements
-          if (row.supplement_introduced) {
-            const supplements = row.supplement_introduced
+          if (row["Supplement Introduced"]) {
+            const supplements = row["Supplement Introduced"]
               .split(',')
-              .map((item: string) => item.trim())
-              .filter((item: string) => item);
+              .map(item => item.trim())
+              .filter(item => item);
 
-            supplements.forEach((supplement: string) => {
+            supplements.forEach(supplement => {
               if (!processed[category].supplements.includes(supplement)) {
                 processed[category].supplements.push(supplement);
               }
