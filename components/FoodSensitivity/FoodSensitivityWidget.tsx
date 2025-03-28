@@ -94,9 +94,9 @@ export default function FoodSensitivityWidget() {
   // Fetch available tables to help debug
   const fetchAvailableTables = async () => {
     try {
-      console.log('Fetching available tables...');
+      console.log('Fetching available tables and columns...');
       
-      // Query for tables in the public schema
+      // Query for a sample row to get column information
       const { data, error } = await supabase
         .from('weight_logs')
         .select('*')
@@ -111,9 +111,13 @@ export default function FoodSensitivityWidget() {
       // If we got here, weight_logs exists
       setAvailableTables(['weight_logs']);
       
-      // List first few columns to help debugging
+      // List all columns with their values to help debugging
       if (data && data.length > 0) {
-        console.log('Sample weight_logs columns:', Object.keys(data[0]).join(', '));
+        const sampleRow = data[0];
+        console.log('Column names and sample values:');
+        Object.entries(sampleRow).forEach(([column, value]) => {
+          console.log(`Column: "${column}" | Sample Value: "${value}"`);
+        });
       }
     } catch (err) {
       console.error('Error in fetchAvailableTables:', err);
@@ -133,23 +137,17 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // First, let's get a sample row to see the column structure
-        const { data: sampleData, error: sampleError } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .limit(1);
-
-        if (sampleError) {
-          throw new Error(`Failed to fetch sample data: ${sampleError.message}`);
-        }
-
-        console.log('Sample data structure:', sampleData?.[0] ? Object.keys(sampleData[0]) : 'No sample data');
-
-        // Now fetch the actual data
+        // Fetch all relevant data in one query with exact column names
         const { data, error } = await supabase
           .from('weight_logs')
-          .select('*')
-          .eq('Email_Id', userData.email);
+          .select(`
+            "Food Item Introduced  (Genos)",
+            "Supplement Introduced",
+            "Tolerant/Intolerant",
+            "Tolerant Food Items",
+            "Intolerant Food Items"
+          `)
+          .eq('Email', userData.email);
 
         if (error) {
           throw new Error(`Failed to fetch data: ${error.message}`);
@@ -169,25 +167,31 @@ export default function FoodSensitivityWidget() {
         };
 
         // Process each row
-        data?.forEach((row: WeightLogData) => {
+        data?.forEach((row: any) => {
           const isTolerant = row["Tolerant/Intolerant"]?.toLowerCase() === 'tolerant';
           const category = isTolerant ? 'tolerant' : 'intolerant';
 
-          // Process foods from both columns
-          const foodItems = [
-            ...(row["Food Item Introduced (Genos)"]?.split(',') || []),
-            ...(row["Tolerant Food Items"]?.split(',') || []),
-            ...(row["Intolerant Food Items"]?.split(',') || [])
+          // Process foods from all relevant columns
+          const foodSources = [
+            row["Food Item Introduced  (Genos)"], // Note the two spaces after "Introduced"
+            row["Tolerant Food Items"],
+            row["Intolerant Food Items"]
           ];
 
-          foodItems
-            .map(item => item.trim())
-            .filter(item => item)
-            .forEach(food => {
-              if (!processed[category].foods.includes(food)) {
-                processed[category].foods.push(food);
-              }
-            });
+          foodSources.forEach(source => {
+            if (source) {
+              const foods = source
+                .split(',')
+                .map(item => item.trim())
+                .filter(item => item);
+
+              foods.forEach(food => {
+                if (!processed[category].foods.includes(food)) {
+                  processed[category].foods.push(food);
+                }
+              });
+            }
+          });
 
           // Process supplements
           if (row["Supplement Introduced"]) {
