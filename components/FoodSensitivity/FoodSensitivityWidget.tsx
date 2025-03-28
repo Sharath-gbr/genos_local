@@ -1,9 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, CircularProgress, Alert, Button, Grid } from '@mui/material';
 import { createClient } from '@/lib/supabase/client';
 import { SupabaseClient } from '@supabase/supabase-js';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Grid,
+  CircularProgress,
+  Collapse,
+  Alert,
+  Divider
+} from '@mui/material';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import SpaIcon from '@mui/icons-material/Spa';
+import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
+import ThumbDownAltIcon from '@mui/icons-material/ThumbDownAlt';
 
 interface WeightLogData {
   id?: string;
@@ -322,59 +336,135 @@ export default function FoodSensitivityWidget() {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Grid container spacing={3}>
+      <Grid container spacing={4} sx={{ minHeight: '400px' }}>
         {/* Tolerances Section */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
           <Paper 
             elevation={3}
             sx={{
-              p: 3,
-              height: '100%',
-              borderRadius: 2,
-              backgroundColor: 'rgba(45, 45, 45, 0.95)',
+              p: 4,
+              width: '100%',
+              borderRadius: 3,
+              background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
               border: '1px solid rgba(255, 95, 31, 0.2)',
               color: '#FFFFFF',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '5px',
+                background: 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)',
+              }
             }}
           >
-            <Typography variant="h6" sx={{ textAlign: 'center', mb: 3, color: '#4CAF50' }}>
-              Tolerances
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+              <ThumbUpAltIcon sx={{ color: '#4CAF50', mr: 1.5, fontSize: 28 }} />
+              <Typography variant="h6" sx={{ textAlign: 'center', color: '#4CAF50', fontWeight: 600 }}>
+                Tolerances
+              </Typography>
+            </Box>
             
             {/* Supplements */}
             <Box sx={{ mb: 4 }}>
-              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
-                🌿 Supplements
-              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2, 
+                pb: 1, 
+                borderBottom: '1px solid rgba(255,255,255,0.15)' 
+              }}>
+                <SpaIcon sx={{ mr: 1, color: '#8BC34A' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  Supplements
+                </Typography>
+              </Box>
               {toleranceData.tolerant.supplements.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.tolerant.supplements.map((supplement, idx) => (
-                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                      <span style={{ marginRight: '8px' }}>•</span> {supplement}
+                    <Typography key={idx} sx={{ 
+                      mb: 1.5, 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      fontSize: '0.95rem',
+                      lineHeight: 1.4
+                    }}>
+                      <Box 
+                        sx={{ 
+                          minWidth: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          bgcolor: '#8BC34A',
+                          mr: 1.5,
+                          mt: '1px'
+                        }} 
+                      />
+                      {supplement}
                     </Typography>
                   ))}
                 </Box>
               ) : (
-                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                <Typography sx={{ 
+                  pl: 2, 
+                  fontStyle: 'italic', 
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.9rem' 
+                }}>
                   No tolerant supplements found
                 </Typography>
               )}
             </Box>
             
             {/* Foods */}
-            <Box>
-              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
-                🥗 Foods
-              </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2, 
+                pb: 1, 
+                borderBottom: '1px solid rgba(255,255,255,0.15)' 
+              }}>
+                <RestaurantIcon sx={{ mr: 1, color: '#8BC34A' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  Foods
+                </Typography>
+              </Box>
               {toleranceData.tolerant.foods.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.tolerant.foods.map((food, idx) => (
-                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                      <span style={{ marginRight: '8px' }}>•</span> {food}
+                    <Typography key={idx} sx={{ 
+                      mb: 1.5, 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      fontSize: '0.95rem',
+                      lineHeight: 1.4
+                    }}>
+                      <Box 
+                        sx={{ 
+                          minWidth: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          bgcolor: '#8BC34A',
+                          mr: 1.5,
+                          mt: '1px'
+                        }} 
+                      />
+                      {food}
                     </Typography>
                   ))}
                 </Box>
               ) : (
-                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                <Typography sx={{ 
+                  pl: 2, 
+                  fontStyle: 'italic', 
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.9rem' 
+                }}>
                   No tolerant foods found
                 </Typography>
               )}
@@ -383,57 +473,133 @@ export default function FoodSensitivityWidget() {
         </Grid>
         
         {/* Intolerances Section */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
           <Paper 
             elevation={3}
             sx={{
-              p: 3,
-              height: '100%',
-              borderRadius: 2,
-              backgroundColor: 'rgba(45, 45, 45, 0.95)',
+              p: 4,
+              width: '100%',
+              borderRadius: 3,
+              background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
               border: '1px solid rgba(255, 95, 31, 0.2)',
               color: '#FFFFFF',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '5px',
+                background: 'linear-gradient(90deg, #f44336 0%, #ff7043 100%)',
+              }
             }}
           >
-            <Typography variant="h6" sx={{ textAlign: 'center', mb: 3, color: '#f44336' }}>
-              Intolerances
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+              <ThumbDownAltIcon sx={{ color: '#f44336', mr: 1.5, fontSize: 28 }} />
+              <Typography variant="h6" sx={{ textAlign: 'center', color: '#f44336', fontWeight: 600 }}>
+                Intolerances
+              </Typography>
+            </Box>
             
             {/* Supplements */}
             <Box sx={{ mb: 4 }}>
-              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
-                🌿 Supplements
-              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2, 
+                pb: 1, 
+                borderBottom: '1px solid rgba(255,255,255,0.15)' 
+              }}>
+                <SpaIcon sx={{ mr: 1, color: '#ff7043' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  Supplements
+                </Typography>
+              </Box>
               {toleranceData.intolerant.supplements.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.intolerant.supplements.map((supplement, idx) => (
-                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                      <span style={{ marginRight: '8px' }}>•</span> {supplement}
+                    <Typography key={idx} sx={{ 
+                      mb: 1.5, 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      fontSize: '0.95rem',
+                      lineHeight: 1.4
+                    }}>
+                      <Box 
+                        sx={{ 
+                          minWidth: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          bgcolor: '#ff7043',
+                          mr: 1.5,
+                          mt: '1px'
+                        }} 
+                      />
+                      {supplement}
                     </Typography>
                   ))}
                 </Box>
               ) : (
-                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                <Typography sx={{ 
+                  pl: 2, 
+                  fontStyle: 'italic', 
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.9rem' 
+                }}>
                   No intolerant supplements found
                 </Typography>
               )}
             </Box>
             
             {/* Foods */}
-            <Box>
-              <Typography variant="subtitle1" sx={{ mb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1 }}>
-                🥗 Foods
-              </Typography>
+            <Box sx={{ flex: 1 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 2, 
+                pb: 1, 
+                borderBottom: '1px solid rgba(255,255,255,0.15)' 
+              }}>
+                <RestaurantIcon sx={{ mr: 1, color: '#ff7043' }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  Foods
+                </Typography>
+              </Box>
               {toleranceData.intolerant.foods.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.intolerant.foods.map((food, idx) => (
-                    <Typography key={idx} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                      <span style={{ marginRight: '8px' }}>•</span> {food}
+                    <Typography key={idx} sx={{ 
+                      mb: 1.5, 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      fontSize: '0.95rem',
+                      lineHeight: 1.4
+                    }}>
+                      <Box 
+                        sx={{ 
+                          minWidth: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          bgcolor: '#ff7043',
+                          mr: 1.5,
+                          mt: '1px'
+                        }} 
+                      />
+                      {food}
                     </Typography>
                   ))}
                 </Box>
               ) : (
-                <Typography sx={{ pl: 2, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)' }}>
+                <Typography sx={{ 
+                  pl: 2, 
+                  fontStyle: 'italic', 
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.9rem' 
+                }}>
                   No intolerant foods found
                 </Typography>
               )}
@@ -445,7 +611,7 @@ export default function FoodSensitivityWidget() {
       <Button 
         variant="text" 
         size="small"
-        sx={{ mt: 2, color: 'rgba(255,255,255,0.5)' }}
+        sx={{ mt: 3, color: 'rgba(255,255,255,0.5)' }}
         onClick={() => {
           setDebugMode(!debugMode);
           if (!debugMode) fetchAvailableTables();
