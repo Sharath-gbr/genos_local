@@ -136,8 +136,8 @@ export default function FoodSensitivityWidget() {
         // Fetch foods data
         const { data: foodData, error: foodError } = await supabase
           .from('weight_logs')
-          .select('*')
-          .eq('email', userData.email)
+          .select('type, introduction, sensitivity')
+          .eq('Email_Id', userData.email)
           .eq('type', 'Food');
 
         if (foodError) {
@@ -147,8 +147,8 @@ export default function FoodSensitivityWidget() {
         // Fetch supplements data
         const { data: supplementData, error: supplementError } = await supabase
           .from('weight_logs')
-          .select('*')
-          .eq('email', userData.email)
+          .select('type, introduction, sensitivity')
+          .eq('Email_Id', userData.email)
           .eq('type', 'Supplement');
 
         if (supplementError) {
@@ -171,26 +171,38 @@ export default function FoodSensitivityWidget() {
 
         // Process food data
         foodData?.forEach((row: any) => {
-          const item = row.introduction?.trim();
-          if (item) {
-            if (row.sensitivity?.toLowerCase() === 'tolerant') {
-              processed.tolerant.foods.push(item);
-            } else if (row.sensitivity?.toLowerCase() === 'intolerant') {
-              processed.intolerant.foods.push(item);
+          const items = row.introduction?.split(',').map((item: string) => item.trim()) || [];
+          items.forEach((item: string) => {
+            if (item) {
+              if (row.sensitivity?.toLowerCase() === 'tolerant') {
+                if (!processed.tolerant.foods.includes(item)) {
+                  processed.tolerant.foods.push(item);
+                }
+              } else if (row.sensitivity?.toLowerCase() === 'intolerant') {
+                if (!processed.intolerant.foods.includes(item)) {
+                  processed.intolerant.foods.push(item);
+                }
+              }
             }
-          }
+          });
         });
 
         // Process supplement data
         supplementData?.forEach((row: any) => {
-          const item = row.introduction?.trim();
-          if (item) {
-            if (row.sensitivity?.toLowerCase() === 'tolerant') {
-              processed.tolerant.supplements.push(item);
-            } else if (row.sensitivity?.toLowerCase() === 'intolerant') {
-              processed.intolerant.supplements.push(item);
+          const items = row.introduction?.split(',').map((item: string) => item.trim()) || [];
+          items.forEach((item: string) => {
+            if (item) {
+              if (row.sensitivity?.toLowerCase() === 'tolerant') {
+                if (!processed.tolerant.supplements.includes(item)) {
+                  processed.tolerant.supplements.push(item);
+                }
+              } else if (row.sensitivity?.toLowerCase() === 'intolerant') {
+                if (!processed.intolerant.supplements.includes(item)) {
+                  processed.intolerant.supplements.push(item);
+                }
+              }
             }
-          }
+          });
         });
 
         // Sort all arrays
