@@ -12,12 +12,16 @@ import {
   CircularProgress,
   Collapse,
   Alert,
-  Divider
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import SpaIcon from '@mui/icons-material/Spa';
 import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
 import ThumbDownAltIcon from '@mui/icons-material/ThumbDownAlt';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 interface WeightLogData {
   id?: string;
@@ -64,6 +68,8 @@ export default function FoodSensitivityWidget() {
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [debugMode, setDebugMode] = useState<boolean>(false);
   const [rawData, setRawData] = useState<any[] | null>(null);
+  const [expandedTolerances, setExpandedTolerances] = useState<boolean>(true);
+  const [expandedIntolerances, setExpandedIntolerances] = useState<boolean>(true);
   
   const supabase = createClient();
   
@@ -336,42 +342,53 @@ export default function FoodSensitivityWidget() {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Grid container spacing={4} sx={{ minHeight: '400px' }}>
-        {/* Tolerances Section */}
-        <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
-          <Paper 
-            elevation={3}
-            sx={{
-              p: 4,
+      <Box sx={{ mb: 3 }}>
+        {/* Tolerances Accordion */}
+        <Accordion 
+          expanded={expandedTolerances}
+          onChange={() => setExpandedTolerances(!expandedTolerances)}
+          sx={{ 
+            mb: 2,
+            background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
+            border: '1px solid rgba(255, 95, 31, 0.2)',
+            color: '#FFFFFF',
+            borderRadius: '10px !important',
+            position: 'relative',
+            overflow: 'hidden',
+            '&:before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
               width: '100%',
-              borderRadius: 3,
-              background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
-              border: '1px solid rgba(255, 95, 31, 0.2)',
-              color: '#FFFFFF',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '5px',
-                background: 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)',
+              height: '4px',
+              background: 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)',
+            },
+            '&.Mui-expanded': {
+              margin: 0,
+            }
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
+            sx={{ 
+              padding: '8px 16px',
+              borderRadius: '8px',
+              '& .MuiAccordionSummary-content': {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
               }
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-              <ThumbUpAltIcon sx={{ color: '#4CAF50', mr: 1.5, fontSize: 28 }} />
-              <Typography variant="h6" sx={{ textAlign: 'center', color: '#4CAF50', fontWeight: 600 }}>
-                Tolerances
-              </Typography>
-            </Box>
-            
+            <ThumbUpAltIcon sx={{ color: '#4CAF50', mr: 1.5, fontSize: 24 }} />
+            <Typography variant="h6" sx={{ color: '#4CAF50', fontWeight: 600 }}>
+              Tolerances {toleranceData.tolerant.foods.length > 0 && `(${toleranceData.tolerant.foods.length})`}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ padding: '0 16px 16px' }}>
             {/* Supplements */}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 3 }}>
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -381,14 +398,14 @@ export default function FoodSensitivityWidget() {
               }}>
                 <SpaIcon sx={{ mr: 1, color: '#8BC34A' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Supplements
+                  Supplements {toleranceData.tolerant.supplements.length > 0 && `(${toleranceData.tolerant.supplements.length})`}
                 </Typography>
               </Box>
               {toleranceData.tolerant.supplements.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.tolerant.supplements.map((supplement, idx) => (
                     <Typography key={idx} sx={{ 
-                      mb: 1.5, 
+                      mb: 1, 
                       display: 'flex', 
                       alignItems: 'center',
                       fontSize: '0.95rem',
@@ -421,7 +438,7 @@ export default function FoodSensitivityWidget() {
             </Box>
             
             {/* Foods */}
-            <Box sx={{ flex: 1 }}>
+            <Box>
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -431,14 +448,14 @@ export default function FoodSensitivityWidget() {
               }}>
                 <RestaurantIcon sx={{ mr: 1, color: '#8BC34A' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Foods
+                  Foods {toleranceData.tolerant.foods.length > 0 && `(${toleranceData.tolerant.foods.length})`}
                 </Typography>
               </Box>
               {toleranceData.tolerant.foods.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.tolerant.foods.map((food, idx) => (
                     <Typography key={idx} sx={{ 
-                      mb: 1.5, 
+                      mb: 1, 
                       display: 'flex', 
                       alignItems: 'center',
                       fontSize: '0.95rem',
@@ -469,44 +486,54 @@ export default function FoodSensitivityWidget() {
                 </Typography>
               )}
             </Box>
-          </Paper>
-        </Grid>
+          </AccordionDetails>
+        </Accordion>
         
-        {/* Intolerances Section */}
-        <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
-          <Paper 
-            elevation={3}
-            sx={{
-              p: 4,
+        {/* Intolerances Accordion */}
+        <Accordion 
+          expanded={expandedIntolerances}
+          onChange={() => setExpandedIntolerances(!expandedIntolerances)}
+          sx={{ 
+            background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
+            border: '1px solid rgba(255, 95, 31, 0.2)',
+            color: '#FFFFFF',
+            borderRadius: '10px !important',
+            position: 'relative',
+            overflow: 'hidden',
+            '&:before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
               width: '100%',
-              borderRadius: 3,
-              background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
-              border: '1px solid rgba(255, 95, 31, 0.2)',
-              color: '#FFFFFF',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '5px',
-                background: 'linear-gradient(90deg, #f44336 0%, #ff7043 100%)',
+              height: '4px',
+              background: 'linear-gradient(90deg, #f44336 0%, #ff7043 100%)',
+            },
+            '&.Mui-expanded': {
+              margin: 0,
+            }
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
+            sx={{ 
+              padding: '8px 16px',
+              borderRadius: '8px',
+              '& .MuiAccordionSummary-content': {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
               }
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-              <ThumbDownAltIcon sx={{ color: '#f44336', mr: 1.5, fontSize: 28 }} />
-              <Typography variant="h6" sx={{ textAlign: 'center', color: '#f44336', fontWeight: 600 }}>
-                Intolerances
-              </Typography>
-            </Box>
-            
+            <ThumbDownAltIcon sx={{ color: '#f44336', mr: 1.5, fontSize: 24 }} />
+            <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
+              Intolerances {toleranceData.intolerant.foods.length > 0 && `(${toleranceData.intolerant.foods.length})`}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ padding: '0 16px 16px' }}>
             {/* Supplements */}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 3 }}>
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -516,14 +543,14 @@ export default function FoodSensitivityWidget() {
               }}>
                 <SpaIcon sx={{ mr: 1, color: '#ff7043' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Supplements
+                  Supplements {toleranceData.intolerant.supplements.length > 0 && `(${toleranceData.intolerant.supplements.length})`}
                 </Typography>
               </Box>
               {toleranceData.intolerant.supplements.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.intolerant.supplements.map((supplement, idx) => (
                     <Typography key={idx} sx={{ 
-                      mb: 1.5, 
+                      mb: 1, 
                       display: 'flex', 
                       alignItems: 'center',
                       fontSize: '0.95rem',
@@ -556,7 +583,7 @@ export default function FoodSensitivityWidget() {
             </Box>
             
             {/* Foods */}
-            <Box sx={{ flex: 1 }}>
+            <Box>
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -566,14 +593,14 @@ export default function FoodSensitivityWidget() {
               }}>
                 <RestaurantIcon sx={{ mr: 1, color: '#ff7043' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Foods
+                  Foods {toleranceData.intolerant.foods.length > 0 && `(${toleranceData.intolerant.foods.length})`}
                 </Typography>
               </Box>
               {toleranceData.intolerant.foods.length > 0 ? (
                 <Box sx={{ pl: 2 }}>
                   {toleranceData.intolerant.foods.map((food, idx) => (
                     <Typography key={idx} sx={{ 
-                      mb: 1.5, 
+                      mb: 1, 
                       display: 'flex', 
                       alignItems: 'center',
                       fontSize: '0.95rem',
@@ -604,14 +631,14 @@ export default function FoodSensitivityWidget() {
                 </Typography>
               )}
             </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
       
       <Button 
         variant="text" 
         size="small"
-        sx={{ mt: 3, color: 'rgba(255,255,255,0.5)' }}
+        sx={{ color: 'rgba(255,255,255,0.5)' }}
         onClick={() => {
           setDebugMode(!debugMode);
           if (!debugMode) fetchAvailableTables();
