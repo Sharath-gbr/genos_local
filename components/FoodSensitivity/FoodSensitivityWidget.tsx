@@ -322,10 +322,6 @@ export default function FoodSensitivityWidget() {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography variant="h5" sx={{ color: '#FF5F1F', mb: 3, fontWeight: 600 }}>
-        Food and Sensitivity Hub
-      </Typography>
-      
       <Grid container spacing={3}>
         {/* Tolerances Section */}
         <Grid item xs={12} md={6}>
