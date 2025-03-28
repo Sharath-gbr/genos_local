@@ -133,13 +133,13 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // Fetch all data in one query since we don't have a type column
+        // Fetch all data in one query with corrected column names
         const { data, error } = await supabase
           .from('weight_logs')
           .select(`
-            "Food Item Introduced (Genos)",
-            "Supplement Introduced",
-            "Tolerant/Intolerant"
+            food_item_introduced,
+            supplement_introduced,
+            tolerance_status
           `)
           .eq('Email_Id', userData.email);
 
@@ -162,12 +162,12 @@ export default function FoodSensitivityWidget() {
 
         // Process each row
         data?.forEach((row: any) => {
-          const isTolerant = row["Tolerant/Intolerant"]?.toLowerCase() === 'tolerant';
+          const isTolerant = row.tolerance_status?.toLowerCase() === 'tolerant';
           const category = isTolerant ? 'tolerant' : 'intolerant';
 
           // Process foods
-          if (row["Food Item Introduced (Genos)"]) {
-            const foods = row["Food Item Introduced (Genos)"]
+          if (row.food_item_introduced) {
+            const foods = row.food_item_introduced
               .split(',')
               .map((item: string) => item.trim())
               .filter((item: string) => item);
@@ -180,8 +180,8 @@ export default function FoodSensitivityWidget() {
           }
 
           // Process supplements
-          if (row["Supplement Introduced"]) {
-            const supplements = row["Supplement Introduced"]
+          if (row.supplement_introduced) {
+            const supplements = row.supplement_introduced
               .split(',')
               .map((item: string) => item.trim())
               .filter((item: string) => item);
