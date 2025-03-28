@@ -3,6 +3,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import FoodSensitivityWidget from '@/components/FoodSensitivity/FoodSensitivityWidget';
+import GenosJourneyWidget from '@/components/FoodSensitivity/GenosJourneyWidget';
 
 export default function FoodSensitivityHub() {
   return (
@@ -12,6 +13,7 @@ export default function FoodSensitivityHub() {
       </Typography>
       
       <FoodSensitivityWidget />
+      <GenosJourneyWidget />
     </Box>
   );
 } 
