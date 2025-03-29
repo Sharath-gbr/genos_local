@@ -27,6 +27,7 @@ export default function GenosJourneyWidget() {
   const [weightData, setWeightData] = useState<WeightLogEntry[]>([]);
   const [expanded, setExpanded] = useState<boolean>(true);
   const [userData, setUserData] = useState<{ email: string } | null>(null);
+  const [yAxisDomain, setYAxisDomain] = useState<[number, number] | undefined>(undefined);
   
   const supabase = createClient();
 
@@ -94,6 +95,25 @@ export default function GenosJourneyWidget() {
         .sort((a, b) => a.dayNumber - b.dayNumber) || [];
 
         console.log('Processed weight data:', processedData);
+        
+        // Calculate min and max weight for Y-axis scaling
+        if (processedData.length > 0) {
+          const weights = processedData.map(entry => entry.weight);
+          const minWeight = Math.min(...weights);
+          const maxWeight = Math.max(...weights);
+          
+          // Calculate padding based on the weight range
+          const range = maxWeight - minWeight;
+          const padding = range < 10 ? 2.5 : 5;
+          
+          // Round down min and round up max for cleaner numbers
+          const yMin = Math.floor(minWeight / padding) * padding;
+          const yMax = Math.ceil(maxWeight / padding) * padding;
+          
+          console.log(`Weight range: ${minWeight} to ${maxWeight}, Y-axis: ${yMin} to ${yMax}`);
+          setYAxisDomain([yMin, yMax]);
+        }
+        
         setWeightData(processedData);
         
       } catch (err) {
@@ -203,6 +223,7 @@ export default function GenosJourneyWidget() {
                 stroke="#FFFFFF" 
                 tick={{ fill: '#FFFFFF' }}
                 label={{ value: 'Weight (kg)', position: 'insideLeft', angle: -90, fill: '#FFFFFF' }}
+                domain={yAxisDomain}
               />
               <Tooltip 
                 contentStyle={{ 
