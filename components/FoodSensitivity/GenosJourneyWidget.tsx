@@ -19,6 +19,7 @@ interface WeightLogEntry {
   day: string;
   dayNumber: number;
   weight: number;
+  isSpike: boolean;
 }
 
 export default function GenosJourneyWidget() {
@@ -80,15 +81,24 @@ export default function GenosJourneyWidget() {
         }
 
         // Simple processing - just extract day and weight
-        const processedData = data?.map((entry: any) => {
+        const processedData = data?.map((entry: any, index: number, arr: any[]) => {
           const dayText = entry["Day of the Program"] || '';
           // Extract numeric value from day text (remove all non-digit characters)
           const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
+          const weight = parseFloat(entry["Weight Recorded"] || '0') || 0;
+          
+          // Determine if this is a weight spike (weight increased from previous day)
+          let isSpike = false;
+          if (index > 0 && weight > 0 && arr[index-1]["Weight Recorded"]) {
+            const prevWeight = parseFloat(arr[index-1]["Weight Recorded"]) || 0;
+            isSpike = weight > prevWeight;
+          }
           
           return {
             day: dayText,
             dayNumber: dayNumber,
-            weight: parseFloat(entry["Weight Recorded"] || '0') || 0,
+            weight: weight,
+            isSpike: isSpike
           };
         })
         .filter((entry: WeightLogEntry) => entry.weight > 0 && entry.dayNumber > 0)
@@ -193,7 +203,7 @@ export default function GenosJourneyWidget() {
       >
         <TimelineIcon sx={{ color: '#2196F3', mr: 1.5, fontSize: 24 }} />
         <Typography variant="h6" sx={{ color: '#2196F3', fontWeight: 600 }}>
-          Weight Journey ({weightData.length} entries)
+          Weight Journey
         </Typography>
       </AccordionSummary>
       <AccordionDetails sx={{ padding: '0 16px 16px' }}>
@@ -231,7 +241,10 @@ export default function GenosJourneyWidget() {
                   border: '1px solid #2196F3',
                   color: '#FFFFFF' 
                 }}
-                formatter={(value: any) => [`${value} kg`, 'Weight']}
+                formatter={(value: any, name: string, props: any) => {
+                  const isSpike = props.payload.isSpike;
+                  return [`${value} kg${isSpike ? ' ↑' : ''}`, 'Weight'];
+                }}
                 labelFormatter={(dayNumber) => `Day: ${dayNumber}`}
               />
               <Line
@@ -240,6 +253,21 @@ export default function GenosJourneyWidget() {
                 stroke="#2196F3"
                 activeDot={{ r: 8 }}
                 strokeWidth={2}
+                dot={(props) => {
+                  const isSpike = props.payload.isSpike;
+                  if (!isSpike) {
+                    return <circle cx={props.cx} cy={props.cy} r={2} fill="#2196F3" />;
+                  }
+                  return (
+                    <circle 
+                      cx={props.cx} 
+                      cy={props.cy} 
+                      r={5} 
+                      fill="#FF5722" 
+                      stroke="#FF5722"
+                    />
+                  );
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
