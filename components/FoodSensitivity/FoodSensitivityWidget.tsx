@@ -81,7 +81,7 @@ export function TolerancesSection({
           left: 0,
           width: '100%',
           height: '4px',
-          background: 'linear-gradient(90deg, #8BC34A 0%, #4CAF50 100%)',
+          background: 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)',
         },
         '&.Mui-expanded': {
           margin: '8px 0',
@@ -90,7 +90,15 @@ export function TolerancesSection({
     >
       <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
-        sx={{ padding: '8px 16px', borderRadius: '8px' }}
+        sx={{ 
+          padding: '8px 16px',
+          borderRadius: '8px',
+          '& .MuiAccordionSummary-content': {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+          }
+        }}
       >
         <ThumbUpAltIcon sx={{ color: '#8BC34A', mr: 1.5, fontSize: 24 }} />
         <Typography variant="h6" sx={{ color: '#8BC34A', fontWeight: 600 }}>
@@ -99,41 +107,105 @@ export function TolerancesSection({
         </Typography>
       </AccordionSummary>
       <AccordionDetails sx={{ padding: '0 16px 16px' }}>
-        {/* Tolerant Supplements */}
-        {toleranceData.tolerant.supplements.length > 0 && (
-          <>
-            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#8BC34A' }}>
-              Supplements
+        {/* Supplements */}
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: 2, 
+            pb: 1, 
+            borderBottom: '1px solid rgba(255,255,255,0.15)' 
+          }}>
+            <SpaIcon sx={{ mr: 1, color: '#8BC34A' }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              Supplements {toleranceData.tolerant.supplements.length > 0 && `(${toleranceData.tolerant.supplements.length})`}
             </Typography>
-            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-              {toleranceData.tolerant.supplements.map((item, index) => (
-                <li key={`tolerant-supplement-${index}`} style={{ marginBottom: '4px' }}>
-                  {item}
-                </li>
+          </Box>
+          {toleranceData.tolerant.supplements.length > 0 ? (
+            <Box sx={{ pl: 2 }}>
+              {toleranceData.tolerant.supplements.map((supplement, idx) => (
+                <Typography key={idx} sx={{ 
+                  mb: 1, 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.4
+                }}>
+                  <Box 
+                    sx={{ 
+                      minWidth: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      bgcolor: '#8BC34A',
+                      mr: 1.5,
+                      mt: '1px'
+                    }} 
+                  />
+                  {supplement}
+                </Typography>
               ))}
-            </ul>
-          </>
-        )}
-        
-        {/* Tolerant Foods */}
-        {toleranceData.tolerant.foods.length > 0 ? (
-          <>
-            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#8BC34A' }}>
-              Foods
+            </Box>
+          ) : (
+            <Typography sx={{ 
+              pl: 2, 
+              fontStyle: 'italic', 
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.9rem' 
+            }}>
+              No tolerant supplements found
             </Typography>
-            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-              {toleranceData.tolerant.foods.map((item, index) => (
-                <li key={`tolerant-food-${index}`} style={{ marginBottom: '4px' }}>
-                  {item}
-                </li>
+          )}
+        </Box>
+
+        {/* Foods */}
+        <Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: 2, 
+            pb: 1, 
+            borderBottom: '1px solid rgba(255,255,255,0.15)' 
+          }}>
+            <RestaurantIcon sx={{ mr: 1, color: '#8BC34A' }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              Foods {toleranceData.tolerant.foods.length > 0 && `(${toleranceData.tolerant.foods.length})`}
+            </Typography>
+          </Box>
+          {toleranceData.tolerant.foods.length > 0 ? (
+            <Box sx={{ pl: 2 }}>
+              {toleranceData.tolerant.foods.map((food, idx) => (
+                <Typography key={idx} sx={{ 
+                  mb: 1, 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.4
+                }}>
+                  <Box 
+                    sx={{ 
+                      minWidth: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      bgcolor: '#8BC34A',
+                      mr: 1.5,
+                      mt: '1px'
+                    }} 
+                  />
+                  {food}
+                </Typography>
               ))}
-            </ul>
-          </>
-        ) : (
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
-            No tolerant foods identified yet.
-          </Typography>
-        )}
+            </Box>
+          ) : (
+            <Typography sx={{ 
+              pl: 2, 
+              fontStyle: 'italic', 
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.9rem' 
+            }}>
+              No tolerant foods found
+            </Typography>
+          )}
+        </Box>
       </AccordionDetails>
     </Accordion>
   );
@@ -166,7 +238,7 @@ export function IntolerancesSection({
           left: 0,
           width: '100%',
           height: '4px',
-          background: 'linear-gradient(90deg, #F44336 0%, #E53935 100%)',
+          background: 'linear-gradient(90deg, #f44336 0%, #ff7043 100%)',
         },
         '&.Mui-expanded': {
           margin: '8px 0',
@@ -175,50 +247,122 @@ export function IntolerancesSection({
     >
       <AccordionSummary
         expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
-        sx={{ padding: '8px 16px', borderRadius: '8px' }}
+        sx={{ 
+          padding: '8px 16px',
+          borderRadius: '8px',
+          '& .MuiAccordionSummary-content': {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+          }
+        }}
       >
-        <ThumbDownAltIcon sx={{ color: '#F44336', mr: 1.5, fontSize: 24 }} />
-        <Typography variant="h6" sx={{ color: '#F44336', fontWeight: 600 }}>
+        <ThumbDownAltIcon sx={{ color: '#f44336', mr: 1.5, fontSize: 24 }} />
+        <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
           Intolerances {toleranceData.intolerant.foods.length + toleranceData.intolerant.supplements.length > 0 && 
             `(${toleranceData.intolerant.foods.length + toleranceData.intolerant.supplements.length})`}
         </Typography>
       </AccordionSummary>
       <AccordionDetails sx={{ padding: '0 16px 16px' }}>
-        {/* Intolerant Supplements */}
-        {toleranceData.intolerant.supplements.length > 0 && (
-          <>
-            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#F44336' }}>
-              Supplements
+        {/* Supplements */}
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: 2, 
+            pb: 1, 
+            borderBottom: '1px solid rgba(255,255,255,0.15)' 
+          }}>
+            <SpaIcon sx={{ mr: 1, color: '#ff7043' }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              Supplements {toleranceData.intolerant.supplements.length > 0 && `(${toleranceData.intolerant.supplements.length})`}
             </Typography>
-            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-              {toleranceData.intolerant.supplements.map((item, index) => (
-                <li key={`intolerant-supplement-${index}`} style={{ marginBottom: '4px' }}>
-                  {item}
-                </li>
+          </Box>
+          {toleranceData.intolerant.supplements.length > 0 ? (
+            <Box sx={{ pl: 2 }}>
+              {toleranceData.intolerant.supplements.map((supplement, idx) => (
+                <Typography key={idx} sx={{ 
+                  mb: 1, 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.4
+                }}>
+                  <Box 
+                    sx={{ 
+                      minWidth: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      bgcolor: '#ff7043',
+                      mr: 1.5,
+                      mt: '1px'
+                    }} 
+                  />
+                  {supplement}
+                </Typography>
               ))}
-            </ul>
-          </>
-        )}
+            </Box>
+          ) : (
+            <Typography sx={{ 
+              pl: 2, 
+              fontStyle: 'italic', 
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.9rem' 
+            }}>
+              No intolerant supplements found
+            </Typography>
+          )}
+        </Box>
         
-        {/* Intolerant Foods */}
-        {toleranceData.intolerant.foods.length > 0 ? (
-          <>
-            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#F44336' }}>
-              Foods
+        {/* Foods */}
+        <Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: 2, 
+            pb: 1, 
+            borderBottom: '1px solid rgba(255,255,255,0.15)' 
+          }}>
+            <RestaurantIcon sx={{ mr: 1, color: '#ff7043' }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              Foods {toleranceData.intolerant.foods.length > 0 && `(${toleranceData.intolerant.foods.length})`}
             </Typography>
-            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-              {toleranceData.intolerant.foods.map((item, index) => (
-                <li key={`intolerant-food-${index}`} style={{ marginBottom: '4px' }}>
-                  {item}
-                </li>
+          </Box>
+          {toleranceData.intolerant.foods.length > 0 ? (
+            <Box sx={{ pl: 2 }}>
+              {toleranceData.intolerant.foods.map((food, idx) => (
+                <Typography key={idx} sx={{ 
+                  mb: 1, 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.4
+                }}>
+                  <Box 
+                    sx={{ 
+                      minWidth: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      bgcolor: '#ff7043',
+                      mr: 1.5,
+                      mt: '1px'
+                    }} 
+                  />
+                  {food}
+                </Typography>
               ))}
-            </ul>
-          </>
-        ) : (
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
-            No intolerant foods identified yet.
-          </Typography>
-        )}
+            </Box>
+          ) : (
+            <Typography sx={{ 
+              pl: 2, 
+              fontStyle: 'italic', 
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.9rem' 
+            }}>
+              No intolerant foods found
+            </Typography>
+          )}
+        </Box>
       </AccordionDetails>
     </Accordion>
   );
