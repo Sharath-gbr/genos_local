@@ -27,7 +27,7 @@ export default function GenosJourneyWidget() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [weightData, setWeightData] = useState<WeightLogEntry[]>([]);
-  const [expanded, setExpanded] = useState<boolean>(true);
+  const [expanded, setExpanded] = useState<boolean>(false);
   const [userData, setUserData] = useState<{ email: string } | null>(null);
   const [yAxisDomain, setYAxisDomain] = useState<[number, number] | undefined>(undefined);
   

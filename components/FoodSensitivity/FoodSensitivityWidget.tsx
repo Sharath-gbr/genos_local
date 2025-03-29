@@ -22,6 +22,8 @@ import SpaIcon from '@mui/icons-material/Spa';
 import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
 import ThumbDownAltIcon from '@mui/icons-material/ThumbDownAlt';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import BugReportIcon from '@mui/icons-material/BugReport';
 
 interface WeightLogData {
   id?: string;
@@ -51,6 +53,177 @@ interface QueryResult {
   sensitivity: string;
 }
 
+export function TolerancesSection({ 
+  toleranceData, 
+  tolerancesExpanded, 
+  setTolerancesExpanded 
+}: { 
+  toleranceData: ToleranceData, 
+  tolerancesExpanded: boolean, 
+  setTolerancesExpanded: (value: boolean) => void 
+}) {
+  return (
+    <Accordion 
+      expanded={tolerancesExpanded}
+      onChange={() => setTolerancesExpanded(!tolerancesExpanded)}
+      sx={{ 
+        mb: 2,
+        background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
+        border: '1px solid rgba(139, 195, 74, 0.3)', 
+        color: '#FFFFFF',
+        borderRadius: '10px !important',
+        position: 'relative',
+        overflow: 'hidden',
+        '&:before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '4px',
+          background: 'linear-gradient(90deg, #8BC34A 0%, #4CAF50 100%)',
+        },
+        '&.Mui-expanded': {
+          margin: '8px 0',
+        }
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
+        sx={{ padding: '8px 16px', borderRadius: '8px' }}
+      >
+        <ThumbUpAltIcon sx={{ color: '#8BC34A', mr: 1.5, fontSize: 24 }} />
+        <Typography variant="h6" sx={{ color: '#8BC34A', fontWeight: 600 }}>
+          Tolerances {toleranceData.tolerant.foods.length + toleranceData.tolerant.supplements.length > 0 && 
+            `(${toleranceData.tolerant.foods.length + toleranceData.tolerant.supplements.length})`}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ padding: '0 16px 16px' }}>
+        {/* Tolerant Supplements */}
+        {toleranceData.tolerant.supplements.length > 0 && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#8BC34A' }}>
+              Supplements
+            </Typography>
+            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
+              {toleranceData.tolerant.supplements.map((item, index) => (
+                <li key={`tolerant-supplement-${index}`} style={{ marginBottom: '4px' }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        
+        {/* Tolerant Foods */}
+        {toleranceData.tolerant.foods.length > 0 ? (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#8BC34A' }}>
+              Foods
+            </Typography>
+            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
+              {toleranceData.tolerant.foods.map((item, index) => (
+                <li key={`tolerant-food-${index}`} style={{ marginBottom: '4px' }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
+            No tolerant foods identified yet.
+          </Typography>
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
+export function IntolerancesSection({ 
+  toleranceData, 
+  intolerancesExpanded, 
+  setIntolerancesExpanded 
+}: { 
+  toleranceData: ToleranceData, 
+  intolerancesExpanded: boolean, 
+  setIntolerancesExpanded: (value: boolean) => void 
+}) {
+  return (
+    <Accordion 
+      expanded={intolerancesExpanded}
+      onChange={() => setIntolerancesExpanded(!intolerancesExpanded)}
+      sx={{ 
+        background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
+        border: '1px solid rgba(244, 67, 54, 0.3)',
+        color: '#FFFFFF',
+        borderRadius: '10px !important',
+        position: 'relative',
+        overflow: 'hidden',
+        '&:before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '4px',
+          background: 'linear-gradient(90deg, #F44336 0%, #E53935 100%)',
+        },
+        '&.Mui-expanded': {
+          margin: '8px 0',
+        }
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
+        sx={{ padding: '8px 16px', borderRadius: '8px' }}
+      >
+        <ThumbDownAltIcon sx={{ color: '#F44336', mr: 1.5, fontSize: 24 }} />
+        <Typography variant="h6" sx={{ color: '#F44336', fontWeight: 600 }}>
+          Intolerances {toleranceData.intolerant.foods.length + toleranceData.intolerant.supplements.length > 0 && 
+            `(${toleranceData.intolerant.foods.length + toleranceData.intolerant.supplements.length})`}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ padding: '0 16px 16px' }}>
+        {/* Intolerant Supplements */}
+        {toleranceData.intolerant.supplements.length > 0 && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#F44336' }}>
+              Supplements
+            </Typography>
+            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
+              {toleranceData.intolerant.supplements.map((item, index) => (
+                <li key={`intolerant-supplement-${index}`} style={{ marginBottom: '4px' }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        
+        {/* Intolerant Foods */}
+        {toleranceData.intolerant.foods.length > 0 ? (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600, color: '#F44336' }}>
+              Foods
+            </Typography>
+            <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
+              {toleranceData.intolerant.foods.map((item, index) => (
+                <li key={`intolerant-food-${index}`} style={{ marginBottom: '4px' }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
+            No intolerant foods identified yet.
+          </Typography>
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 export default function FoodSensitivityWidget() {
   const [userData, setUserData] = useState<{ firstName: string; lastName: string; email: string } | null>(null);
   const [toleranceData, setToleranceData] = useState<ToleranceData>({
@@ -68,8 +241,8 @@ export default function FoodSensitivityWidget() {
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [debugMode, setDebugMode] = useState<boolean>(false);
   const [rawData, setRawData] = useState<any[] | null>(null);
-  const [expandedTolerances, setExpandedTolerances] = useState<boolean>(true);
-  const [expandedIntolerances, setExpandedIntolerances] = useState<boolean>(true);
+  const [tolerancesExpanded, setTolerancesExpanded] = useState<boolean>(false);
+  const [intolerancesExpanded, setIntolerancesExpanded] = useState<boolean>(false);
   
   const supabase = createClient();
   
@@ -259,6 +432,11 @@ export default function FoodSensitivityWidget() {
     }
   }, [userData, supabase]);
 
+  const toggleDebugMode = () => {
+    setDebugMode(!debugMode);
+    if (!debugMode) fetchAvailableTables();
+  };
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
@@ -278,10 +456,7 @@ export default function FoodSensitivityWidget() {
           variant="outlined" 
           color="secondary" 
           sx={{ mt: 1 }}
-          onClick={() => {
-            setDebugMode(!debugMode);
-            if (!debugMode) fetchAvailableTables();
-          }}
+          onClick={toggleDebugMode}
         >
           {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
         </Button>
@@ -341,328 +516,74 @@ export default function FoodSensitivityWidget() {
   }
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ mb: 3 }}>
-        {/* Tolerances Accordion */}
-        <Accordion 
-          expanded={expandedTolerances}
-          onChange={() => setExpandedTolerances(!expandedTolerances)}
-          sx={{ 
-            mb: 2,
-            background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
-            border: '1px solid rgba(255, 95, 31, 0.2)',
-            color: '#FFFFFF',
-            borderRadius: '10px !important',
-            position: 'relative',
-            overflow: 'hidden',
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '4px',
-              background: 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)',
-            },
-            '&.Mui-expanded': {
-              margin: 0,
-            }
-          }}
-        >
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
-            sx={{ 
-              padding: '8px 16px',
-              borderRadius: '8px',
-              '& .MuiAccordionSummary-content': {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-              }
-            }}
-          >
-            <ThumbUpAltIcon sx={{ color: '#4CAF50', mr: 1.5, fontSize: 24 }} />
-            <Typography variant="h6" sx={{ color: '#4CAF50', fontWeight: 600 }}>
-              Tolerances {toleranceData.tolerant.foods.length > 0 && `(${toleranceData.tolerant.foods.length})`}
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ padding: '0 16px 16px' }}>
-            {/* Supplements */}
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 2, 
-                pb: 1, 
-                borderBottom: '1px solid rgba(255,255,255,0.15)' 
-              }}>
-                <SpaIcon sx={{ mr: 1, color: '#8BC34A' }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Supplements {toleranceData.tolerant.supplements.length > 0 && `(${toleranceData.tolerant.supplements.length})`}
-                </Typography>
-              </Box>
-              {toleranceData.tolerant.supplements.length > 0 ? (
-                <Box sx={{ pl: 2 }}>
-                  {toleranceData.tolerant.supplements.map((supplement, idx) => (
-                    <Typography key={idx} sx={{ 
-                      mb: 1, 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      fontSize: '0.95rem',
-                      lineHeight: 1.4
-                    }}>
-                      <Box 
-                        sx={{ 
-                          minWidth: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          bgcolor: '#8BC34A',
-                          mr: 1.5,
-                          mt: '1px'
-                        }} 
-                      />
-                      {supplement}
-                    </Typography>
-                  ))}
-                </Box>
-              ) : (
-                <Typography sx={{ 
-                  pl: 2, 
-                  fontStyle: 'italic', 
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.9rem' 
-                }}>
-                  No tolerant supplements found
-                </Typography>
-              )}
-            </Box>
-            
-            {/* Foods */}
-            <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 2, 
-                pb: 1, 
-                borderBottom: '1px solid rgba(255,255,255,0.15)' 
-              }}>
-                <RestaurantIcon sx={{ mr: 1, color: '#8BC34A' }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Foods {toleranceData.tolerant.foods.length > 0 && `(${toleranceData.tolerant.foods.length})`}
-                </Typography>
-              </Box>
-              {toleranceData.tolerant.foods.length > 0 ? (
-                <Box sx={{ pl: 2 }}>
-                  {toleranceData.tolerant.foods.map((food, idx) => (
-                    <Typography key={idx} sx={{ 
-                      mb: 1, 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      fontSize: '0.95rem',
-                      lineHeight: 1.4
-                    }}>
-                      <Box 
-                        sx={{ 
-                          minWidth: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          bgcolor: '#8BC34A',
-                          mr: 1.5,
-                          mt: '1px'
-                        }} 
-                      />
-                      {food}
-                    </Typography>
-                  ))}
-                </Box>
-              ) : (
-                <Typography sx={{ 
-                  pl: 2, 
-                  fontStyle: 'italic', 
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.9rem' 
-                }}>
-                  No tolerant foods found
-                </Typography>
-              )}
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-        
-        {/* Intolerances Accordion */}
-        <Accordion 
-          expanded={expandedIntolerances}
-          onChange={() => setExpandedIntolerances(!expandedIntolerances)}
-          sx={{ 
-            background: 'linear-gradient(145deg, rgba(45, 45, 45, 0.97) 0%, rgba(35, 35, 35, 0.95) 100%)',
-            border: '1px solid rgba(255, 95, 31, 0.2)',
-            color: '#FFFFFF',
-            borderRadius: '10px !important',
-            position: 'relative',
-            overflow: 'hidden',
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '4px',
-              background: 'linear-gradient(90deg, #f44336 0%, #ff7043 100%)',
-            },
-            '&.Mui-expanded': {
-              margin: 0,
-            }
-          }}
-        >
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon sx={{ color: '#FFFFFF' }} />}
-            sx={{ 
-              padding: '8px 16px',
-              borderRadius: '8px',
-              '& .MuiAccordionSummary-content': {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-start',
-              }
-            }}
-          >
-            <ThumbDownAltIcon sx={{ color: '#f44336', mr: 1.5, fontSize: 24 }} />
-            <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
-              Intolerances {toleranceData.intolerant.foods.length > 0 && `(${toleranceData.intolerant.foods.length})`}
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ padding: '0 16px 16px' }}>
-            {/* Supplements */}
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 2, 
-                pb: 1, 
-                borderBottom: '1px solid rgba(255,255,255,0.15)' 
-              }}>
-                <SpaIcon sx={{ mr: 1, color: '#ff7043' }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Supplements {toleranceData.intolerant.supplements.length > 0 && `(${toleranceData.intolerant.supplements.length})`}
-                </Typography>
-              </Box>
-              {toleranceData.intolerant.supplements.length > 0 ? (
-                <Box sx={{ pl: 2 }}>
-                  {toleranceData.intolerant.supplements.map((supplement, idx) => (
-                    <Typography key={idx} sx={{ 
-                      mb: 1, 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      fontSize: '0.95rem',
-                      lineHeight: 1.4
-                    }}>
-                      <Box 
-                        sx={{ 
-                          minWidth: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          bgcolor: '#ff7043',
-                          mr: 1.5,
-                          mt: '1px'
-                        }} 
-                      />
-                      {supplement}
-                    </Typography>
-                  ))}
-                </Box>
-              ) : (
-                <Typography sx={{ 
-                  pl: 2, 
-                  fontStyle: 'italic', 
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.9rem' 
-                }}>
-                  No intolerant supplements found
-                </Typography>
-              )}
-            </Box>
-            
-            {/* Foods */}
-            <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                mb: 2, 
-                pb: 1, 
-                borderBottom: '1px solid rgba(255,255,255,0.15)' 
-              }}>
-                <RestaurantIcon sx={{ mr: 1, color: '#ff7043' }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  Foods {toleranceData.intolerant.foods.length > 0 && `(${toleranceData.intolerant.foods.length})`}
-                </Typography>
-              </Box>
-              {toleranceData.intolerant.foods.length > 0 ? (
-                <Box sx={{ pl: 2 }}>
-                  {toleranceData.intolerant.foods.map((food, idx) => (
-                    <Typography key={idx} sx={{ 
-                      mb: 1, 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      fontSize: '0.95rem',
-                      lineHeight: 1.4
-                    }}>
-                      <Box 
-                        sx={{ 
-                          minWidth: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          bgcolor: '#ff7043',
-                          mr: 1.5,
-                          mt: '1px'
-                        }} 
-                      />
-                      {food}
-                    </Typography>
-                  ))}
-                </Box>
-              ) : (
-                <Typography sx={{ 
-                  pl: 2, 
-                  fontStyle: 'italic', 
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.9rem' 
-                }}>
-                  No intolerant foods found
-                </Typography>
-              )}
-            </Box>
-          </AccordionDetails>
-        </Accordion>
-      </Box>
-      
-      <Button 
-        variant="text" 
-        size="small"
-        sx={{ color: 'rgba(255,255,255,0.5)' }}
-        onClick={() => {
-          setDebugMode(!debugMode);
-          if (!debugMode) fetchAvailableTables();
-        }}
-      >
-        {debugMode ? 'Hide Debug Info' : 'Debug'}
-      </Button>
-      
-      {debugMode && (
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1, fontSize: '0.8rem' }}>
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-            Raw Data Sample:
-          </Typography>
-          <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
-            {rawData && rawData.length > 0 ? JSON.stringify(rawData[0], null, 2) : 'No data'}
-          </pre>
-          
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
-            Processed Data:
-          </Typography>
-          <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
-            {JSON.stringify(toleranceData, null, 2)}
-          </pre>
+    <Box sx={{ mb: 3 }}>
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100px' }}>
+          <CircularProgress color="primary" />
+          <Typography sx={{ ml: 2 }}>Loading your food sensitivity data...</Typography>
         </Box>
+      ) : error ? (
+        <Alert severity="error">{error}</Alert>
+      ) : (
+        <>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button 
+              startIcon={debugMode ? <VisibilityOffIcon /> : <BugReportIcon />}
+              onClick={toggleDebugMode} 
+              size="small"
+              variant="outlined"
+              sx={{ 
+                fontSize: '0.7rem', 
+                py: 0.5,
+                textTransform: 'none',
+                borderColor: 'rgba(255,255,255,0.2)',
+                color: 'rgba(255,255,255,0.6)',
+                '&:hover': {
+                  borderColor: 'rgba(255,255,255,0.4)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                }
+              }}
+            >
+              {debugMode ? 'Hide Debug Info' : 'Debug'}
+            </Button>
+          </Box>
+
+          {/* Tolerances and Intolerances side by side */}
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TolerancesSection 
+                toleranceData={toleranceData} 
+                tolerancesExpanded={tolerancesExpanded} 
+                setTolerancesExpanded={setTolerancesExpanded} 
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <IntolerancesSection 
+                toleranceData={toleranceData} 
+                intolerancesExpanded={intolerancesExpanded} 
+                setIntolerancesExpanded={setIntolerancesExpanded}
+              />
+            </Grid>
+          </Grid>
+
+          {debugMode && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 1, fontSize: '0.8rem' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Raw Data Sample:
+              </Typography>
+              <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
+                {rawData && rawData.length > 0 ? JSON.stringify(rawData[0], null, 2) : 'No data'}
+              </pre>
+              
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>
+                Processed Data:
+              </Typography>
+              <pre style={{ overflow: 'auto', maxHeight: '200px' }}>
+                {JSON.stringify(toleranceData, null, 2)}
+              </pre>
+            </Box>
+          )}
+        </>
       )}
     </Box>
   );
