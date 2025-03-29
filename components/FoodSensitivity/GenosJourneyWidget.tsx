@@ -20,6 +20,7 @@ interface WeightLogEntry {
   dayNumber: number;
   weight: number;
   isSpike: boolean;
+  foodItem: string | null;
 }
 
 export default function GenosJourneyWidget() {
@@ -86,11 +87,13 @@ export default function GenosJourneyWidget() {
           // Extract numeric value from day text (remove all non-digit characters)
           const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
           const weight = parseFloat(entry["Weight Recorded"] || '0') || 0;
+          const foodItem = entry["Food Item Introduced  (Genos)"] || null;
           
           return {
             day: dayText,
             dayNumber: dayNumber,
             weight: weight,
+            foodItem: foodItem,
             isSpike: false // Will set this after sorting
           };
         })
@@ -254,7 +257,19 @@ export default function GenosJourneyWidget() {
                   const isSpike = props.payload.isSpike;
                   return [`${value} kg${isSpike ? ' ↑' : ''}`, 'Weight'];
                 }}
-                labelFormatter={(dayNumber) => `Day: ${dayNumber}`}
+                labelFormatter={(dayNumber, payload) => {
+                  if (payload && payload.length && payload[0].payload) {
+                    const data = payload[0].payload;
+                    let text = `Day: ${data.dayNumber}`;
+                    
+                    if (data.isSpike && data.foodItem) {
+                      text += `\nIntroduced: ${data.foodItem}`;
+                    }
+                    
+                    return text;
+                  }
+                  return `Day: ${dayNumber}`;
+                }}
               />
               <Line
                 type="monotone"
