@@ -17,6 +17,7 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 
 interface WeightLogEntry {
   day: string;
+  dayNumber: number;
   weight: number;
 }
 
@@ -79,11 +80,18 @@ export default function GenosJourneyWidget() {
 
         // Simple processing - just extract day and weight
         const processedData = data?.map((entry: any) => {
+          const dayText = entry["Day of the Program"] || '';
+          // Extract numeric value from day text (remove all non-digit characters)
+          const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
+          
           return {
-            day: entry["Day of the Program"] || '',
+            day: dayText,
+            dayNumber: dayNumber,
             weight: parseFloat(entry["Weight Recorded"] || '0') || 0,
           };
-        }).filter((entry: WeightLogEntry) => entry.weight > 0) || [];
+        })
+        .filter((entry: WeightLogEntry) => entry.weight > 0 && entry.dayNumber > 0)
+        .sort((a, b) => a.dayNumber - b.dayNumber) || [];
 
         console.log('Processed weight data:', processedData);
         setWeightData(processedData);
@@ -186,7 +194,7 @@ export default function GenosJourneyWidget() {
             >
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
               <XAxis 
-                dataKey="day" 
+                dataKey="dayNumber" 
                 stroke="#FFFFFF" 
                 tick={{ fill: '#FFFFFF' }}
                 label={{ value: 'Day of Program', position: 'insideBottom', offset: -10, fill: '#FFFFFF' }}
@@ -203,7 +211,7 @@ export default function GenosJourneyWidget() {
                   color: '#FFFFFF' 
                 }}
                 formatter={(value: any) => [`${value} kg`, 'Weight']}
-                labelFormatter={(label) => `Day: ${label}`}
+                labelFormatter={(dayNumber) => `Day: ${dayNumber}`}
               />
               <Line
                 type="monotone"
