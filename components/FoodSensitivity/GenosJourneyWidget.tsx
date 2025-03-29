@@ -80,29 +80,38 @@ export default function GenosJourneyWidget() {
           throw new Error(`Failed to fetch weight data: ${error.message}`);
         }
 
-        // Simple processing - just extract day and weight
-        const processedData = data?.map((entry: any, index: number, arr: any[]) => {
+        // Extract and process data first
+        let processedData = data?.map((entry: any) => {
           const dayText = entry["Day of the Program"] || '';
           // Extract numeric value from day text (remove all non-digit characters)
           const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
           const weight = parseFloat(entry["Weight Recorded"] || '0') || 0;
           
-          // Determine if this is a weight spike (weight increased from previous day)
-          let isSpike = false;
-          if (index > 0 && weight > 0 && arr[index-1]["Weight Recorded"]) {
-            const prevWeight = parseFloat(arr[index-1]["Weight Recorded"]) || 0;
-            isSpike = weight > prevWeight;
-          }
-          
           return {
             day: dayText,
             dayNumber: dayNumber,
             weight: weight,
-            isSpike: isSpike
+            isSpike: false // Will set this after sorting
           };
         })
         .filter((entry: WeightLogEntry) => entry.weight > 0 && entry.dayNumber > 0)
         .sort((a, b) => a.dayNumber - b.dayNumber) || [];
+        
+        // Now calculate spikes AFTER sorting by day number
+        processedData = processedData.map((entry, index, array) => {
+          let isSpike = false;
+          // Skip the first day (no previous data to compare)
+          if (index > 0) {
+            const prevWeight = array[index - 1].weight;
+            isSpike = entry.weight > prevWeight;
+            console.log(`Day ${entry.dayNumber} (${entry.weight}kg) > Day ${array[index-1].dayNumber} (${prevWeight}kg)? ${isSpike}`);
+          }
+          
+          return {
+            ...entry,
+            isSpike
+          };
+        });
 
         console.log('Processed weight data:', processedData);
         
