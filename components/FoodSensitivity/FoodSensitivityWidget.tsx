@@ -474,8 +474,8 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // Fetch all relevant data in one query with exact column names
-        const { data, error } = await supabase
+        // First try direct match with auth email
+        let { data, error } = await supabase
           .from('weight_logs')
           .select(`
             "Food Item Introduced  (Genos)",
@@ -485,6 +485,53 @@ export default function FoodSensitivityWidget() {
             "Intolerant Food Items"
           `)
           .eq('Email', userData.email);
+
+        // If no data found with direct match, check for mapping
+        if (!error && (!data || data.length === 0)) {
+          console.log('No data found with direct email match, checking mappings...');
+          
+          // Get the mapped Airtable email for this auth email
+          const { data: mappingData, error: mappingError } = await supabase
+            .from('user_mappings')
+            .select('airtable_email')
+            .eq('auth_email', userData.email)
+            .maybeSingle();
+          
+          if (mappingError) {
+            console.error('Error checking email mappings:', mappingError);
+          }
+          
+          if (mappingData?.airtable_email) {
+            console.log('Found mapping to Airtable email:', mappingData.airtable_email);
+            
+            // Try again with the mapped Airtable email
+            const mappedResult = await supabase
+              .from('weight_logs')
+              .select(`
+                "Food Item Introduced  (Genos)",
+                "Supplement Introduced",
+                "Tolerant/Intolerant",
+                "Tolerant Food Items",
+                "Intolerant Food Items"
+              `)
+              .eq('Email', mappingData.airtable_email);
+            
+            data = mappedResult.data;
+            error = mappedResult.error;
+            
+            if (error) {
+              throw new Error(`Failed to fetch data with mapped email: ${error.message}`);
+            }
+            
+            if (data && data.length > 0) {
+              console.log(`Found ${data.length} records using mapped email`);
+            } else {
+              console.log('No data found even with mapped email');
+            }
+          } else {
+            console.log('No email mapping found for this account');
+          }
+        }
 
         if (error) {
           throw new Error(`Failed to fetch data: ${error.message}`);
