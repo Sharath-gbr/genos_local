@@ -16,6 +16,8 @@ CREATE TABLE public.weight_logs (
     food_item_introduced TEXT,
     tolerant_intolerant TEXT,
     tolerant_food_items TEXT,
+    intolerant_food_items TEXT,
+    supplement_introduced TEXT,
     last_synced TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -73,8 +73,8 @@ export default function GenosJourneyWidget() {
         const { data, error } = await supabase
           .from('weight_logs')
           .select('*')
-          .eq('email', userData.email)
-          .order('day_of_program', { ascending: true });
+          .eq('Email', userData.email)
+          .order('"Day of the Program"', { ascending: true });
 
         if (error) {
           console.error('Supabase error details:', error);
@@ -83,11 +83,11 @@ export default function GenosJourneyWidget() {
 
         // Extract and process data first
         let processedData = data?.map((entry: any) => {
-          const dayText = entry.day_of_program || '';
+          const dayText = entry["Day of the Program"] || '';
           // Extract numeric value from day text (remove all non-digit characters)
           const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
-          const weight = parseFloat(entry.weight_recorded || '0') || 0;
-          const foodItem = entry.food_item_introduced || null;
+          const weight = parseFloat(entry["Weight Recorded"] || '0') || 0;
+          const foodItem = entry["Food Item Introduced  (Genos)"] || null;
           
           return {
             day: dayText,

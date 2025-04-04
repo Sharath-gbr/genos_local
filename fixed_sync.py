@@ -143,6 +143,8 @@ def transform_airtable_record(record):
         'food_item_introduced': fields.get('Food Item Introduced (Genos)'),
         'tolerant_intolerant': fields.get('Tolerant/Intolerant'),
         'tolerant_food_items': fields.get('Tolerant Food Items'),
+        'intolerant_food_items': fields.get('Intolerant Food Items'),
+        'supplement_introduced': fields.get('Supplement Introduced'),
         'last_synced': datetime.now().isoformat(),
     }
 
@@ -240,6 +242,8 @@ def sync_airtable_to_supabase():
                     'airtable_id': record['id'],
                     'tolerant_intolerant': record['fields'].get('Tolerant/Intolerant'),
                     'tolerant_food_items': record['fields'].get('Tolerant Food Items'),
+                    'intolerant_food_items': record['fields'].get('Intolerant Food Items'),
+                    'supplement_introduced': record['fields'].get('Supplement Introduced'),
                     'day_of_program': record['fields'].get('Day of Program'),
                     'food_item_introduced': record['fields'].get('Food Item Introduced (Genos)')
                 }

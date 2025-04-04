@@ -29,7 +29,9 @@ interface WeightLogData {
   id?: string;
   email?: string;
   food_item_introduced?: string;
+  supplement_introduced?: string;
   tolerant_food_items?: string;
+  intolerant_food_items?: string;
   tolerant_intolerant?: string;
   [key: string]: any;
 }
@@ -471,60 +473,35 @@ export default function FoodSensitivityWidget() {
         setIsLoading(true);
         console.log('Fetching tolerance data for email:', userData.email);
         
-        // First try direct match with auth email
-        let { data, error } = await supabase
+        // Get all possible emails for this user (direct + mapped)
+        const { data: mappingData, error: mappingError } = await supabase
+          .from('user_mappings')
+          .select('airtable_email')
+          .eq('auth_email', userData.email);
+          
+        if (mappingError) {
+          console.error('Error checking email mappings:', mappingError);
+        }
+        
+        // Create array of all possible emails
+        const possibleEmails = [userData.email];
+        if (mappingData) {
+          possibleEmails.push(...mappingData.map(m => m.airtable_email));
+        }
+        
+        console.log('Checking for data with emails:', possibleEmails);
+        
+        // Fetch data for all possible emails in a single query
+        const { data, error } = await supabase
           .from('weight_logs')
           .select(`
             food_item_introduced,
+            supplement_introduced,
             tolerant_intolerant,
-            tolerant_food_items
+            tolerant_food_items,
+            intolerant_food_items
           `)
-          .eq('email', userData.email);
-
-        // If no data found with direct match, check for mapping
-        if (!error && (!data || data.length === 0)) {
-          console.log('No data found with direct email match, checking mappings...');
-          
-          // Get the mapped Airtable email for this auth email
-          const { data: mappingData, error: mappingError } = await supabase
-            .from('user_mappings')
-            .select('airtable_email')
-            .eq('auth_email', userData.email)
-            .maybeSingle();
-          
-          if (mappingError) {
-            console.error('Error checking email mappings:', mappingError);
-          }
-          
-          if (mappingData?.airtable_email) {
-            console.log('Found mapping to Airtable email:', mappingData.airtable_email);
-            
-            // Try again with the mapped Airtable email
-            const mappedResult = await supabase
-              .from('weight_logs')
-              .select(`
-                food_item_introduced,
-                tolerant_intolerant,
-                tolerant_food_items
-              `)
-              .eq('email', mappingData.airtable_email);
-            
-            data = mappedResult.data;
-            error = mappedResult.error;
-            
-            if (error) {
-              throw new Error(`Failed to fetch data with mapped email: ${error.message}`);
-            }
-            
-            if (data && data.length > 0) {
-              console.log(`Found ${data.length} records using mapped email`);
-            } else {
-              console.log('No data found even with mapped email');
-            }
-          } else {
-            console.log('No email mapping found for this account');
-          }
-        }
+          .in('email', possibleEmails);
 
         if (error) {
           throw new Error(`Failed to fetch data: ${error.message}`);
@@ -551,7 +528,8 @@ export default function FoodSensitivityWidget() {
           // Process foods from all relevant columns
           const foodSources = [
             row.food_item_introduced,
-            row.tolerant_food_items
+            row.tolerant_food_items,
+            row.intolerant_food_items
           ];
 
           foodSources.forEach(source => {
@@ -570,8 +548,8 @@ export default function FoodSensitivityWidget() {
           });
 
           // Process supplements
-          if (row["Supplement Introduced"]) {
-            const supplements = row["Supplement Introduced"]
+          if (row.supplement_introduced) {
+            const supplements = row.supplement_introduced
               .split(',')
               .map(item => item.trim())
               .filter(item => item);

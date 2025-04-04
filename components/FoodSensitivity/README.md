@@ -13,10 +13,12 @@ This widget displays user-specific food sensitivity data from Supabase based on 
    - `food_item_introduced` (text) - Food item introduced
    - `tolerant_intolerant` (text) - Whether the user was tolerant or intolerant
    - `tolerant_food_items` (text) - List of tolerated food items
+   - `intolerant_food_items` (text) - List of intolerant food items
+   - `supplement_introduced` (text) - Supplements introduced
    - `airtable_id` (text) - Unique identifier from Airtable
    - `last_synced` (timestamp with time zone) - Last sync timestamp
-
-2. Enable Row Level Security (RLS) on the table using:
+2. The table should have an `Email` column (case-sensitive) to identify user data
+3. Enable Row Level Security (RLS) on the table using:
    ```sql
    ALTER TABLE public.weight_logs ENABLE ROW LEVEL SECURITY;
    
@@ -24,7 +26,7 @@ This widget displays user-specific food sensitivity data from Supabase based on 
    ON public.weight_logs 
    FOR SELECT 
    USING (
-     email = auth.jwt() ->> 'email'
+     "Email" = auth.jwt() ->> 'email'
    );
    ```
 
