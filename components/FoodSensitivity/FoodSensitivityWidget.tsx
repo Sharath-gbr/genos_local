@@ -27,13 +27,10 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 
 interface WeightLogData {
   id?: string;
-  Email?: string;
   email?: string;
-  "Food Item Introduced (Genos)"?: string;
-  "Supplement Introduced"?: string;
-  "Tolerant Food Items"?: string;
-  "Intolerant Food Items"?: string;
-  "Tolerant/Intolerant"?: string;
+  food_item_introduced?: string;
+  tolerant_food_items?: string;
+  tolerant_intolerant?: string;
   [key: string]: any;
 }
 
@@ -478,13 +475,11 @@ export default function FoodSensitivityWidget() {
         let { data, error } = await supabase
           .from('weight_logs')
           .select(`
-            "Food Item Introduced  (Genos)",
-            "Supplement Introduced",
-            "Tolerant/Intolerant",
-            "Tolerant Food Items",
-            "Intolerant Food Items"
+            food_item_introduced,
+            tolerant_intolerant,
+            tolerant_food_items
           `)
-          .eq('Email', userData.email);
+          .eq('email', userData.email);
 
         // If no data found with direct match, check for mapping
         if (!error && (!data || data.length === 0)) {
@@ -508,13 +503,11 @@ export default function FoodSensitivityWidget() {
             const mappedResult = await supabase
               .from('weight_logs')
               .select(`
-                "Food Item Introduced  (Genos)",
-                "Supplement Introduced",
-                "Tolerant/Intolerant",
-                "Tolerant Food Items",
-                "Intolerant Food Items"
+                food_item_introduced,
+                tolerant_intolerant,
+                tolerant_food_items
               `)
-              .eq('Email', mappingData.airtable_email);
+              .eq('email', mappingData.airtable_email);
             
             data = mappedResult.data;
             error = mappedResult.error;
@@ -552,14 +545,13 @@ export default function FoodSensitivityWidget() {
 
         // Process each row
         data?.forEach((row: any) => {
-          const isTolerant = row["Tolerant/Intolerant"]?.toLowerCase() === 'tolerant';
+          const isTolerant = row.tolerant_intolerant?.toLowerCase() === 'tolerant';
           const category = isTolerant ? 'tolerant' : 'intolerant';
 
           // Process foods from all relevant columns
           const foodSources = [
-            row["Food Item Introduced  (Genos)"], // Note the two spaces after "Introduced"
-            row["Tolerant Food Items"],
-            row["Intolerant Food Items"]
+            row.food_item_introduced,
+            row.tolerant_food_items
           ];
 
           foodSources.forEach(source => {

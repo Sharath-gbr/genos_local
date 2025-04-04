@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Box, Typography } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Grid, Alert, CircularProgress } from '@mui/material';
+import { createClient } from '@/lib/supabase/client';
 import FoodSensitivityWidget from '@/components/FoodSensitivity/FoodSensitivityWidget';
 import GenosJourneyWidget from '@/components/FoodSensitivity/GenosJourneyWidget';
 
@@ -12,8 +13,10 @@ export default function FoodSensitivityHub() {
         Food and Sensitivity Hub
       </Typography>
       
+      {/* Food Sensitivity Widget */}
       <FoodSensitivityWidget />
       
+      {/* Weight Journey Widget */}
       <GenosJourneyWidget />
     </Box>
   );

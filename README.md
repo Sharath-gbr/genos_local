@@ -1,138 +1,119 @@
-# NEN Dashboard
+# Airtable to Supabase Sync
 
-A modern, secure dashboard application built with Next.js, NextAuth, and Material-UI.
+Automated sync utility for transferring weight logs data from Airtable to Supabase, with support for email mapping between systems.
+
+## Setup Instructions
+
+1. **Database Setup**
+   
+   Run the table creation script in your Supabase SQL editor:
+   ```bash
+   # Copy the contents of setup_tables.sql and run in Supabase SQL Editor
+   ```
+
+2. **Environment Setup**
+
+   ```bash
+   # Clone the repository
+   git clone <your-repo-url>
+   cd <your-repo-directory>
+
+   # Create and activate virtual environment
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+   # Install dependencies
+   pip install -r requirements.txt
+
+   # Set up environment variables
+   cp .env.example .env
+   # Edit .env with your credentials
+   ```
+
+3. **Environment Variables**
+
+   Edit your `.env` file with the following:
+   - `AIRTABLE_API_KEY`: Your Airtable API key
+   - `AIRTABLE_BASE_ID`: Your Airtable base ID
+   - `AIRTABLE_TABLE_NAME`: The name of your Airtable table (default: "Weight Logs")
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_SERVICE_KEY`: Your Supabase service role key (required for RLS bypass)
+
+## Usage
+
+### Manual Sync
+
+Run the sync script:
+```bash
+python fixed_sync.py
+```
+
+### Automated Sync (Cron)
+
+Add to crontab to run daily:
+```bash
+0 0 * * * cd /path/to/sync && /path/to/venv/bin/python fixed_sync.py >> /path/to/sync.log 2>&1
+```
+
+### Automated Sync (GitHub Actions)
+
+Create `.github/workflows/sync.yml`:
+```yaml
+name: Sync Airtable to Supabase
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:      # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run sync
+        run: python fixed_sync.py
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_NAME: ${{ secrets.AIRTABLE_TABLE_NAME }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+```
 
 ## Features
 
-- 🔐 Secure authentication with NextAuth
-  - Google OAuth integration
-  - Email/Password authentication
-  - Password reset functionality
-  - Session management
-- 🎨 Modern UI with Material-UI
-  - Responsive design
-  - Dark theme
-  - Custom styled components
-- 📱 Responsive design
-  - Mobile-first approach
-  - Adaptive layouts
-- 🚀 Fast performance with Next.js
-  - Server-side rendering
-  - API routes
-  - TypeScript support
-- 🔒 Protected routes
-  - Role-based access control
-  - Secure API endpoints
-- 📧 Email integration
-  - Password reset emails
-  - Email verification
+- **Automatic Email Mapping**: Automatically maps emails when they match exactly between systems
+- **List Email Handling**: Properly handles cases where Airtable returns emails as lists
+- **Incremental Sync**: Only syncs new or updated records since last sync
+- **Row Level Security**: Ensures users can only access their own data
+- **Batched Processing**: Handles API rate limits gracefully
+- **Detailed Logging**: Comprehensive logging for troubleshooting
 
-## Tech Stack
+## Troubleshooting
 
-- Next.js 15.2.1
-- NextAuth.js for authentication
-- Material-UI for UI components
-- TypeScript for type safety
-- React for UI components
-- Airtable for data storage
+### Common Issues
 
-## Getting Started
+1. **Permission Denied**
+   - Ensure you're using a service role key for Supabase
+   - Verify RLS policies are correctly set up
 
-1. Clone the repository:
+2. **Email Mapping Issues**
+   - Check the logs for any email processing errors
+   - Verify email formats in Airtable data
+
+3. **Rate Limiting**
+   - The script includes built-in rate limiting
+   - Adjust `BATCH_SIZE` and sleep times if needed
+
+### Logs
+
+Check the logs for detailed information about the sync process:
 ```bash
-git clone https://github.com/Sharath-gbr/nen-dashboard.git
+tail -f /path/to/sync.log
 ```
-
-2. Install dependencies:
-```bash
-cd nen-dashboard
-npm install
-```
-
-3. Set up environment variables:
-- Copy `.env.example` to `.env.local`
-- Update the variables with your credentials
-- See `.env.example` for detailed setup instructions
-
-4. Run the development server:
-```bash
-npm run dev
-```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Project Structure
-
-```
-nen-dashboard/
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   ├── components/        # Reusable components
-│   ├── dashboard/         # Dashboard pages
-│   └── theme.ts           # Theme configuration
-├── public/                # Static files
-└── package.json          # Project dependencies
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## Security
-
-- All sensitive information is stored in environment variables
-- OAuth credentials are properly secured
-- API routes are protected
-- Session management is handled securely
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details
-
-## Deployment Checklist
-
-⚠️ **Important**: Do not reuse development tokens in production!
-
-Before deploying to production, ensure you:
-
-1. **Google OAuth Configuration**
-   - Create new OAuth 2.0 Client credentials for production
-   - Update authorized origins and redirect URIs
-   - Update `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
-
-2. **NextAuth Configuration**
-   - Generate new `NEXTAUTH_SECRET` using `openssl rand -base64 32`
-   - Update `NEXTAUTH_URL` to production URL
-
-3. **Airtable Configuration**
-   - Generate new access token for production
-   - Verify base ID and table names
-   - Update `AIRTABLE_ACCESS_TOKEN` and `AIRTABLE_BASE_ID`
-
-4. **Email Configuration**
-   - Create new Gmail App Password for production
-   - Update email configuration settings
-
-5. **Profile Picture Storage**
-   - Set up cloud storage service (e.g., AWS S3, Google Cloud Storage)
-   - Configure storage bucket and access permissions
-   - Add storage service credentials to environment variables:
-     ```
-     STORAGE_BUCKET_NAME=your-bucket-name
-     STORAGE_ACCESS_KEY=your-access-key
-     STORAGE_SECRET_KEY=your-secret-key
-     STORAGE_REGION=your-region
-     ```
-   - Update profile picture upload functionality to use cloud storage
-   - Implement proper file size limits and type validation
-   - Set up CDN (optional) for better performance
-
-Remember to:
-- Test all functionality with new production credentials
-- Verify security headers and CORS settings
-- Enable proper logging and monitoring
-- Set up backup procedures for user data
