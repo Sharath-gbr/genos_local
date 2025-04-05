@@ -128,25 +128,58 @@ def chunk_list(lst, chunk_size):
     """Split a list into smaller chunks of specified size."""
     return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
-def transform_airtable_record(record):
+def check_table_structure(supabase_client):
+    """Check the actual structure of the weight_logs table and return available columns"""
+    try:
+        # Try to get a sample row to see available columns
+        response = supabase_client.table('weight_logs').select('*').limit(1).execute()
+        available_columns = set()
+        if response.data:
+            sample_row = response.data[0]
+            logger.info("Available columns in weight_logs table:")
+            for column in sample_row.keys():
+                logger.info(f"- {column}")
+                available_columns.add(column)
+        return available_columns
+    except Exception as e:
+        logger.error(f"Error checking table structure: {e}")
+        return set()
+
+def transform_airtable_record(record, available_columns):
     """Transform an Airtable record to match Supabase schema"""
     fields = record.get('fields', {})
     email = fields.get('Email')
     if isinstance(email, list):
         email = email[0] if email else None
     
-    return {
+    weight = fields.get('Weight Recorded')
+    if weight:
+        try:
+            weight = float(weight)
+        except (ValueError, TypeError):
+            weight = None
+    
+    # Map Airtable fields to Supabase columns
+    field_mapping = {
         'airtable_id': record.get('id'),
         'email': email,
         'day_of_program': fields.get('Day of Program'),
-        'weight_recorded': float(fields.get('Weight Recorded', 0)) if fields.get('Weight Recorded') else None,
+        'weight_recorded': weight,
         'food_item_introduced': fields.get('Food Item Introduced (Genos)'),
         'tolerant_intolerant': fields.get('Tolerant/Intolerant'),
         'tolerant_food_items': fields.get('Tolerant Food Items'),
         'intolerant_food_items': fields.get('Intolerant Food Items'),
         'supplement_introduced': fields.get('Supplement Introduced'),
-        'last_synced': datetime.now().isoformat(),
+        'last_synced': datetime.now(timezone.utc).isoformat()
     }
+    
+    # Only include fields that exist in the table
+    transformed = {}
+    for key, value in field_mapping.items():
+        if key in available_columns:
+            transformed[key] = value
+    
+    return transformed
 
 def update_sync_metadata(supabase_client, table_name, sync_time):
     try:
@@ -183,6 +216,69 @@ def get_last_sync_time(supabase_client, table_name):
         logging.error(f"Error getting last sync time: {e}")
         return None
 
+def setup_database(supabase_client):
+    """Set up the database tables and schema"""
+    try:
+        # First, check if the table exists by trying to select from it
+        try:
+            supabase_client.table('weight_logs').select('*').limit(1).execute()
+            logger.info("weight_logs table exists, proceeding with sync")
+            return True
+        except Exception as table_check_error:
+            logger.warning(f"Could not access weight_logs table: {table_check_error}")
+            logger.info("Please create the weight_logs table in the Supabase dashboard with the following SQL:")
+            sql = """
+            CREATE TABLE IF NOT EXISTS public.weight_logs (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                airtable_id TEXT UNIQUE,
+                email TEXT,
+                day_of_program TEXT,
+                weight_recorded DECIMAL,
+                food_item_introduced TEXT,
+                tolerant_intolerant TEXT,
+                tolerant_food_items TEXT,
+                intolerant_food_items TEXT,
+                supplement_introduced TEXT,
+                last_synced TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_weight_logs_email ON public.weight_logs(email);
+            
+            ALTER TABLE public.weight_logs ENABLE ROW LEVEL SECURITY;
+            
+            DROP POLICY IF EXISTS "Users can view their own weight logs" ON public.weight_logs;
+            CREATE POLICY "Users can view their own weight logs" 
+            ON public.weight_logs FOR SELECT 
+            USING (
+                auth.uid() IN (
+                    SELECT id FROM auth.users WHERE 
+                    email = weight_logs.email 
+                    OR 
+                    auth.uid() IN (
+                        SELECT id FROM auth.users WHERE 
+                        email IN (
+                            SELECT auth_email FROM user_mappings 
+                            WHERE airtable_email = weight_logs.email
+                        )
+                    )
+                )
+            );
+            
+            DROP POLICY IF EXISTS "Service role can manage weight logs" ON public.weight_logs;
+            CREATE POLICY "Service role can manage weight logs" 
+            ON public.weight_logs 
+            USING (auth.role() = 'service_role');
+            """
+            logger.info("\n" + sql)
+            logger.info("\nPlease run this SQL in the Supabase dashboard and try again.")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error setting up database: {e}")
+        raise e
+
 def sync_airtable_to_supabase():
     """Main function to sync data from Airtable to Supabase"""
     try:
@@ -198,8 +294,19 @@ def sync_airtable_to_supabase():
         sync_time = datetime.now(timezone.utc).isoformat()
         logger.info(f"Starting sync at {sync_time}")
 
-        # Initialize Supabase client
+        # Initialize Supabase client first
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+        # Check database setup and structure
+        if not setup_database(supabase_client):
+            logger.error("Database setup required. Please follow the instructions above.")
+            return
+        
+        # Get available columns
+        available_columns = check_table_structure(supabase_client)
+        if not available_columns:
+            logger.error("Could not determine table structure")
+            return
 
         # Check if user_mappings table exists
         check_user_mappings_table(supabase_client)
@@ -235,18 +342,7 @@ def sync_airtable_to_supabase():
             transformed_records = []
             
             for record in batch:
-                transformed_record = {
-                    'last_synced': sync_time,
-                    'weight_recorded': record['fields'].get('Weight Recorded'),
-                    'email': record['fields'].get('Email'),
-                    'airtable_id': record['id'],
-                    'tolerant_intolerant': record['fields'].get('Tolerant/Intolerant'),
-                    'tolerant_food_items': record['fields'].get('Tolerant Food Items'),
-                    'intolerant_food_items': record['fields'].get('Intolerant Food Items'),
-                    'supplement_introduced': record['fields'].get('Supplement Introduced'),
-                    'day_of_program': record['fields'].get('Day of Program'),
-                    'food_item_introduced': record['fields'].get('Food Item Introduced (Genos)')
-                }
+                transformed_record = transform_airtable_record(record, available_columns)
                 transformed_records.append(transformed_record)
 
             try:
@@ -261,8 +357,8 @@ def sync_airtable_to_supabase():
 
         # Update sync metadata
         update_sync_metadata(supabase_client, 'weight_logs', sync_time)
-        logger.info("Sync completed successfully")
-
+        logger.info(f"Sync completed successfully at {datetime.now(timezone.utc).isoformat()}")
+        
     except Exception as e:
         logger.error(f"Script failed: {e}")
         raise e
