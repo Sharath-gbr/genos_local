@@ -279,6 +279,18 @@ def setup_database(supabase_client):
         logger.error(f"Error setting up database: {e}")
         raise e
 
+def extract_unique_emails(all_records):
+    """Extract unique emails from Airtable records"""
+    unique_emails = set()
+    for record in all_records:
+        email = record['fields'].get('Email')  # Get from Airtable using 'Email' (uppercase from Airtable)
+        if email:
+            if isinstance(email, list):
+                unique_emails.update(email)
+            else:
+                unique_emails.add(email)
+    return unique_emails
+
 def sync_airtable_to_supabase():
     """Main function to sync data from Airtable to Supabase"""
     try:
@@ -321,15 +333,8 @@ def sync_airtable_to_supabase():
         all_records = airtable.all()
         logger.info(f"Found {len(all_records)} records to sync")
 
-        # Extract unique emails
-        unique_emails = set()
-        for record in all_records:
-            email = record['fields'].get('Email')
-            if email:
-                if isinstance(email, list):
-                    unique_emails.update(email)
-                else:
-                    unique_emails.add(email)
+        # Extract unique emails - use a dedicated function
+        unique_emails = extract_unique_emails(all_records)
         logger.info(f"Found {len(unique_emails)} unique emails in Airtable data\n")
 
         # Update email mappings
