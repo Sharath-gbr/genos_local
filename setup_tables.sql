@@ -6,18 +6,33 @@ DROP TABLE IF EXISTS public.sync_metadata CASCADE;
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create weight_logs table with snake_case column names
+-- Create weight_logs table with all columns from Airtable
 CREATE TABLE public.weight_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     airtable_id TEXT UNIQUE,
-    email TEXT,  -- Changed back to simple 'email' to match Supabase conventions
+    email TEXT,
     day_of_program TEXT,
     weight_recorded DECIMAL,
-    food_item_introduced TEXT,
+    bp_systolic INTEGER,
+    bp_diastolic INTEGER,
+    blood_sugar DECIMAL,
+    deviation TEXT,
+    supplement_introduced TEXT,
+    body_physiology TEXT,
+    symptoms_observed TEXT,
     tolerant_intolerant TEXT,
+    chest DECIMAL,
+    waist DECIMAL,
+    hips DECIMAL,
     tolerant_food_items TEXT,
     intolerant_food_items TEXT,
-    supplement_introduced TEXT,
+    comments TEXT,
+    phase_of_program TEXT,
+    reason_for_diagnosing_tolerant TEXT,
+    client_name TEXT,
+    food_item_introduced TEXT,
+    first_name TEXT,
+    last_name TEXT,
     last_synced TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

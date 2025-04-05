@@ -28,11 +28,28 @@ import BugReportIcon from '@mui/icons-material/BugReport';
 interface WeightLogData {
   id?: string;
   email?: string;
-  food_item_introduced?: string;
+  day_of_program?: string;
+  weight_recorded?: number;
+  bp_systolic?: number;
+  bp_diastolic?: number;
+  blood_sugar?: number;
+  deviation?: string;
   supplement_introduced?: string;
+  body_physiology?: string;
+  symptoms_observed?: string;
+  tolerant_intolerant?: string;
+  chest?: number;
+  waist?: number;
+  hips?: number;
   tolerant_food_items?: string;
   intolerant_food_items?: string;
-  tolerant_intolerant?: string;
+  comments?: string;
+  phase_of_program?: string;
+  reason_for_diagnosing_tolerant?: string;
+  client_name?: string;
+  food_item_introduced?: string;
+  first_name?: string;
+  last_name?: string;
   [key: string]: any;
 }
 
@@ -454,6 +471,10 @@ export default function FoodSensitivityWidget() {
         Object.entries(sampleRow).forEach(([column, value]) => {
           console.log(`Column: "${column}" | Sample Value: "${value}"`);
         });
+        
+        // Add more detailed debugging
+        console.log('Full sample row:', JSON.stringify(sampleRow, null, 2));
+        console.log('Available columns:', Object.keys(sampleRow).join(', '));
       }
     } catch (err) {
       console.error('Error in fetchAvailableTables:', err);
@@ -494,13 +515,7 @@ export default function FoodSensitivityWidget() {
         // Fetch data for all possible emails in a single query
         const { data, error } = await supabase
           .from('weight_logs')
-          .select(`
-            food_item_introduced,
-            supplement_introduced,
-            tolerant_intolerant,
-            tolerant_food_items,
-            intolerant_food_items
-          `)
+          .select('*')
           .in('email', possibleEmails);
 
         if (error) {

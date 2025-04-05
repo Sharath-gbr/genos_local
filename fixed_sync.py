@@ -152,24 +152,50 @@ def transform_airtable_record(record, available_columns):
     if isinstance(email, list):
         email = email[0] if email else None
     
-    weight = fields.get('Weight Recorded')
-    if weight:
-        try:
-            weight = float(weight)
-        except (ValueError, TypeError):
-            weight = None
+    # Helper function to safely convert to float
+    def safe_float(value):
+        if value:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+        return None
     
-    # Map Airtable fields to Supabase columns
+    # Helper function to safely convert to int
+    def safe_int(value):
+        if value:
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
+        return None
+    
+    # Map Airtable fields to Supabase columns (using snake_case for Supabase)
     field_mapping = {
         'airtable_id': record.get('id'),
         'email': email,
-        'day_of_program': fields.get('Day of Program'),
-        'weight_recorded': weight,
-        'food_item_introduced': fields.get('Food Item Introduced (Genos)'),
+        'day_of_program': fields.get('Day of the Program'),
+        'weight_recorded': safe_float(fields.get('Weight Recorded')),
+        'bp_systolic': safe_int(fields.get('BP Systolic')),
+        'bp_diastolic': safe_int(fields.get('BP Diastolic')),
+        'blood_sugar': safe_float(fields.get('Blood Sugar')),
+        'deviation': fields.get('Deviation'),
+        'supplement_introduced': fields.get('Supplement Introduced'),
+        'body_physiology': fields.get('Body Physiology'),
+        'symptoms_observed': fields.get('Symptoms Observed'),
         'tolerant_intolerant': fields.get('Tolerant/Intolerant'),
+        'chest': safe_float(fields.get('Chest')),
+        'waist': safe_float(fields.get('Waist')),
+        'hips': safe_float(fields.get('Hips')),
         'tolerant_food_items': fields.get('Tolerant Food Items'),
         'intolerant_food_items': fields.get('Intolerant Food Items'),
-        'supplement_introduced': fields.get('Supplement Introduced'),
+        'comments': fields.get('Comments'),
+        'phase_of_program': fields.get('Phase of the Program'),
+        'reason_for_diagnosing_tolerant': fields.get('Reason For Diagnosing Tolerant'),
+        'client_name': fields.get('Client Name'),
+        'food_item_introduced': fields.get('Food Item Introduced (Genos)'),
+        'first_name': fields.get('First Name'),
+        'last_name': fields.get('Last Name'),
         'last_synced': datetime.now(timezone.utc).isoformat()
     }
     

@@ -21,6 +21,11 @@ interface WeightLogEntry {
   weight: number;
   isSpike: boolean;
   foodItem: string | null;
+  supplementIntroduced: string | null;
+  bpSystolic: number | null;
+  bpDiastolic: number | null;
+  bloodSugar: number | null;
+  tolerantIntolerant: string | null;
 }
 
 export default function GenosJourneyWidget() {
@@ -81,6 +86,8 @@ export default function GenosJourneyWidget() {
           throw new Error(`Failed to fetch weight data: ${error.message}`);
         }
 
+        console.log('Raw data from Supabase:', data);
+
         // Extract and process data first
         let processedData = data?.map((entry: any) => {
           const dayText = entry.day_of_program || '';
@@ -94,7 +101,13 @@ export default function GenosJourneyWidget() {
             dayNumber: dayNumber,
             weight: weight,
             foodItem: foodItem,
-            isSpike: false // Will set this after sorting
+            isSpike: false, // Will set this after sorting
+            // Add additional data for tooltip/details
+            supplementIntroduced: entry.supplement_introduced || null,
+            bpSystolic: entry.bp_systolic || null,
+            bpDiastolic: entry.bp_diastolic || null,
+            bloodSugar: entry.blood_sugar || null,
+            tolerantIntolerant: entry.tolerant_intolerant || null
           };
         })
         .filter((entry: WeightLogEntry) => entry.weight > 0 && entry.dayNumber > 0)
@@ -262,8 +275,24 @@ export default function GenosJourneyWidget() {
                     const data = payload[0].payload;
                     let text = `Day: ${data.dayNumber}`;
                     
-                    if (data.isSpike && data.foodItem) {
-                      text += `\nIntroduced: ${data.foodItem}`;
+                    if (data.foodItem) {
+                      text += `\nFood: ${data.foodItem}`;
+                    }
+                    
+                    if (data.supplementIntroduced) {
+                      text += `\nSupplement: ${data.supplementIntroduced}`;
+                    }
+                    
+                    if (data.bpSystolic && data.bpDiastolic) {
+                      text += `\nBP: ${data.bpSystolic}/${data.bpDiastolic}`;
+                    }
+                    
+                    if (data.bloodSugar) {
+                      text += `\nBlood Sugar: ${data.bloodSugar}`;
+                    }
+                    
+                    if (data.tolerantIntolerant) {
+                      text += `\nResult: ${data.tolerantIntolerant}`;
                     }
                     
                     return text;
