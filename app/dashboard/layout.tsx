@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import MenuIcon from '@mui/icons-material/Menu'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import LogoutHandler from '@/app/components/LogoutHandler'
 
 const EXPANDED_WIDTH = 280
 const COLLAPSED_WIDTH = 80
@@ -207,13 +208,12 @@ export default function DashboardLayout({
               </ul>
             </li>
             <li className="mt-auto">
-              <StyledNavItem
-                href="/logout"
-                onClick={handleNavClick}
-              >
-                <ArrowLeftOnRectangleIcon className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-indigo-600" />
-                <NavItemText isExpanded={isExpanded}>Logout</NavItemText>
-              </StyledNavItem>
+              <LogoutHandler onClick={handleNavClick}>
+                <div className="flex items-center p-6 py-1.5 px-2 rounded-md text-gray-700 hover:bg-orange-100 hover:translate-x-1 transition-all duration-200 relative overflow-hidden gap-8 cursor-pointer">
+                  <ArrowLeftOnRectangleIcon className="h-6 w-6 shrink-0 text-orange-500 group-hover:text-orange-600 transition-transform duration-200 hover:scale-110" />
+                  <NavItemText isExpanded={isExpanded}>Logout</NavItemText>
+                </div>
+              </LogoutHandler>
             </li>
           </ul>
         </nav>
