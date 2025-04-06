@@ -38,14 +38,16 @@ export default function GenosJourneyWidget() {
   
   const supabase = createClient();
 
-  // Fetch the user's data from Supabase auth
+  // Fetch the user's data from our server-side API
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const { data, error } = await supabase.auth.getUser();
+        // Use our custom API endpoint instead of direct Supabase auth
+        const response = await fetch('/api/auth/session-fix');
+        const data = await response.json();
         
-        if (error) {
-          throw error;
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to fetch user session');
         }
         
         if (data?.user) {
@@ -62,34 +64,23 @@ export default function GenosJourneyWidget() {
     };
 
     fetchUserData();
-  }, [supabase.auth]);
+  }, []);
 
-  // Fetch weight log data
-  useEffect(() => {
-    const fetchWeightData = async () => {
-      if (!userData?.email) {
-        return;
+  // Define emergency API fallback function
+  const useFallbackWeightApi = async (userEmail: string) => {
+    try {
+      console.log('Using emergency bypass API for weight data...');
+      
+      const response = await fetch(`/api/user-data-bypass?email=${encodeURIComponent(userEmail)}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
       
-      try {
-        setIsLoading(true);
-        
-        // Simple query to get just the day and weight data
-        const { data, error } = await supabase
-          .from('weight_logs')
-          .select('*')
-          .eq('email', userData.email)
-          .order('day_of_program', { ascending: true });
-
-        if (error) {
-          console.error('Supabase error details:', error);
-          throw new Error(`Failed to fetch weight data: ${error.message}`);
-        }
-
-        console.log('Raw data from Supabase:', data);
-
-        // Extract and process data first
-        let processedData = data?.map((entry: any) => {
+      const data = await response.json();
+      
+      if (data.weightData && data.weightData.length > 0) {
+        // Process the data in the same way as the original function
+        let processedData = data.weightData.map((entry: any) => {
           const dayText = entry.day_of_program || '';
           // Extract numeric value from day text (remove all non-digit characters)
           const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
@@ -111,7 +102,7 @@ export default function GenosJourneyWidget() {
           };
         })
         .filter((entry: WeightLogEntry) => entry.weight > 0 && entry.dayNumber > 0)
-        .sort((a, b) => a.dayNumber - b.dayNumber) || [];
+        .sort((a, b) => a.dayNumber - b.dayNumber);
         
         // Now calculate spikes AFTER sorting by day number
         processedData = processedData.map((entry, index, array) => {
@@ -120,7 +111,6 @@ export default function GenosJourneyWidget() {
           if (index > 0) {
             const prevWeight = array[index - 1].weight;
             isSpike = entry.weight > prevWeight;
-            console.log(`Day ${entry.dayNumber} (${entry.weight}kg) > Day ${array[index-1].dayNumber} (${prevWeight}kg)? ${isSpike}`);
           }
           
           return {
@@ -128,10 +118,8 @@ export default function GenosJourneyWidget() {
             isSpike
           };
         });
-
-        console.log('Processed weight data:', processedData);
         
-        // Calculate min and max weight for Y-axis scaling
+        // Calculate Y-axis domain
         if (processedData.length > 0) {
           const weights = processedData.map(entry => entry.weight);
           const minWeight = Math.min(...weights);
@@ -145,11 +133,127 @@ export default function GenosJourneyWidget() {
           const yMin = Math.floor(minWeight / padding) * padding;
           const yMax = Math.ceil(maxWeight / padding) * padding;
           
-          console.log(`Weight range: ${minWeight} to ${maxWeight}, Y-axis: ${yMin} to ${yMax}`);
           setYAxisDomain([yMin, yMax]);
         }
         
         setWeightData(processedData);
+        return true;
+      }
+      
+      return false;
+    } catch (err) {
+      console.error('Error in fallback weight API:', err);
+      return false;
+    }
+  };
+
+  // Fetch weight log data
+  useEffect(() => {
+    const fetchWeightData = async () => {
+      if (!userData?.email) {
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        
+        try {
+          // Simple query to get just the day and weight data
+          const { data, error } = await supabase
+            .from('weight_logs')
+            .select('*')
+            .eq('email', userData.email)
+            .order('day_of_program', { ascending: true });
+
+          if (error) {
+            console.error('Supabase error details:', error);
+            // If normal flow fails, try the emergency bypass
+            console.log('Trying fallback API for weight data...');
+            const fallbackSuccess = await useFallbackWeightApi(userData.email);
+            
+            if (!fallbackSuccess) {
+              throw new Error(`Failed to fetch weight data: ${error.message}`);
+            } else {
+              setIsLoading(false);
+              return; // Early return if fallback succeeded
+            }
+          }
+
+          // Process the data... (the rest remains unchanged)
+          console.log('Raw data from Supabase:', data);
+
+          // Extract and process data first
+          let processedData = data?.map((entry: any) => {
+            const dayText = entry.day_of_program || '';
+            // Extract numeric value from day text (remove all non-digit characters)
+            const dayNumber = parseInt(dayText.replace(/\D/g, '')) || 0;
+            const weight = parseFloat(entry.weight_recorded || '0') || 0;
+            const foodItem = entry.food_item_introduced || null;
+            
+            return {
+              day: dayText,
+              dayNumber: dayNumber,
+              weight: weight,
+              foodItem: foodItem,
+              isSpike: false, // Will set this after sorting
+              // Add additional data for tooltip/details
+              supplementIntroduced: entry.supplement_introduced || null,
+              bpSystolic: entry.bp_systolic || null,
+              bpDiastolic: entry.bp_diastolic || null,
+              bloodSugar: entry.blood_sugar || null,
+              tolerantIntolerant: entry.tolerant_intolerant || null
+            };
+          })
+          .filter((entry: WeightLogEntry) => entry.weight > 0 && entry.dayNumber > 0)
+          .sort((a, b) => a.dayNumber - b.dayNumber) || [];
+          
+          // Now calculate spikes AFTER sorting by day number
+          processedData = processedData.map((entry, index, array) => {
+            let isSpike = false;
+            // Skip the first day (no previous data to compare)
+            if (index > 0) {
+              const prevWeight = array[index - 1].weight;
+              isSpike = entry.weight > prevWeight;
+              console.log(`Day ${entry.dayNumber} (${entry.weight}kg) > Day ${array[index-1].dayNumber} (${prevWeight}kg)? ${isSpike}`);
+            }
+            
+            return {
+              ...entry,
+              isSpike
+            };
+          });
+
+          console.log('Processed weight data:', processedData);
+          
+          // Calculate min and max weight for Y-axis scaling
+          if (processedData.length > 0) {
+            const weights = processedData.map(entry => entry.weight);
+            const minWeight = Math.min(...weights);
+            const maxWeight = Math.max(...weights);
+            
+            // Calculate padding based on the weight range
+            const range = maxWeight - minWeight;
+            const padding = range < 10 ? 2.5 : 5;
+            
+            // Round down min and round up max for cleaner numbers
+            const yMin = Math.floor(minWeight / padding) * padding;
+            const yMax = Math.ceil(maxWeight / padding) * padding;
+            
+            console.log(`Weight range: ${minWeight} to ${maxWeight}, Y-axis: ${yMin} to ${yMax}`);
+            setYAxisDomain([yMin, yMax]);
+          }
+          
+          setWeightData(processedData);
+          
+        } catch (err) {
+          // Try emergency bypass if anything goes wrong
+          console.error('Error in normal weight data flow:', err);
+          const fallbackSuccess = await useFallbackWeightApi(userData.email);
+          
+          if (!fallbackSuccess) {
+            throw new Error(`Failed to fetch weight data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          }
+        }
         
       } catch (err) {
         console.error('Error in fetchWeightData:', err);
